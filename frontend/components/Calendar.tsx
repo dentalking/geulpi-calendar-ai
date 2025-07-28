@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState, SyntheticEvent } from 'react'
 import {
   Calendar as BigCalendar,
   dateFnsLocalizer,
@@ -136,10 +136,11 @@ export default function Calendar({
     announceToScreenReader(`${dateStr}에 새 일정 추가를 위해 선택했습니다`, 'polite')
   }, [onSelectSlot])
 
-  const handleSelectEvent = useCallback((event: CalendarEvent) => {
-    onSelectEvent?.(event)
+  const handleSelectEvent = useCallback((event: object, e: SyntheticEvent<HTMLElement>) => {
+    const calendarEvent = event as CalendarEvent
+    onSelectEvent?.(calendarEvent)
     // Announce event selection
-    announceToScreenReader(`일정 "${event.title}" 선택했습니다`, 'polite')
+    announceToScreenReader(`일정 "${calendarEvent.title}" 선택했습니다`, 'polite')
   }, [onSelectEvent])
 
   const handleEventDrop = useCallback((args: EventInteractionArgs<CalendarEvent>) => {
