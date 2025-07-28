@@ -1,12 +1,8 @@
-'use client'
-
-import { useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 import GoogleLoginButton from '@/components/GoogleLoginButton'
+import ErrorMessage from './ErrorMessage'
 
 export default function LoginPage() {
-  const searchParams = useSearchParams()
-  const error = searchParams.get('error')
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full space-y-8 p-8">
@@ -15,13 +11,9 @@ export default function LoginPage() {
           <p className="text-gray-600">AI 기반 스마트 일정 관리 서비스</p>
         </div>
 
-        {error && (
-          <div data-testid="error-message" className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-            {error === 'no_token' && '로그인에 실패했습니다. 다시 시도해주세요.'}
-            {error === 'unauthorized' && '접근 권한이 없습니다. 로그인해주세요.'}
-            {error !== 'no_token' && error !== 'unauthorized' && `오류: ${error}`}
-          </div>
-        )}
+        <Suspense fallback={null}>
+          <ErrorMessage />
+        </Suspense>
 
         <div className="mt-8 space-y-6">
           <div className="relative">

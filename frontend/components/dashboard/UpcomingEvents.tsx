@@ -39,8 +39,8 @@ export function UpcomingEvents() {
 
   const events = data?.events || []
   const sortedEvents = [...events]
-    .filter(event => new Date(event.start) > today)
-    .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
+    .filter(event => new Date(event.startTime) > today)
+    .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
     .slice(0, 5)
 
   return (
@@ -64,7 +64,7 @@ export function UpcomingEvents() {
       ) : (
         <div className="space-y-2">
           {sortedEvents.map((event) => {
-            const eventDate = new Date(event.start)
+            const eventDate = new Date(event.startTime)
             const isToday = format(eventDate, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd')
             const isTomorrow = format(eventDate, 'yyyy-MM-dd') === format(addDays(today, 1), 'yyyy-MM-dd')
             

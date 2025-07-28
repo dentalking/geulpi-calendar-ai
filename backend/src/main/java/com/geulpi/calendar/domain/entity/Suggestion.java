@@ -41,7 +41,7 @@ public class Suggestion {
     private Event proposedEvent;
     
     @Convert(converter = JsonConverter.class)
-    @Column(columnDefinition = "jsonb")
+    @Column(columnDefinition = "TEXT")
     private Map<String, Object> proposedChanges;
     
     @Convert(converter = TimeSlotListConverter.class)

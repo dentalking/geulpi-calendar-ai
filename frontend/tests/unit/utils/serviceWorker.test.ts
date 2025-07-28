@@ -185,7 +185,7 @@ describe('serviceWorker utils', () => {
       };
       
       mockServiceWorker.register.mockResolvedValue(registrationWithUpdate);
-      mockServiceWorker.controller = {};
+      mockServiceWorker.controller = null;
       
       await registerServiceWorker();
       
@@ -326,7 +326,7 @@ describe('serviceWorker utils', () => {
       const mockSubscription = { endpoint: 'test-endpoint' };
       mockRegistration.pushManager.subscribe.mockResolvedValue(mockSubscription);
       
-      const result = await subscribeToNotifications(mockRegistration, 'test-key');
+      const result = await subscribeToNotifications(mockRegistration as unknown as ServiceWorkerRegistration, 'test-key');
       
       expect(mockRegistration.pushManager.subscribe).toHaveBeenCalledWith({
         userVisibleOnly: true,
@@ -340,7 +340,7 @@ describe('serviceWorker utils', () => {
       const error = new Error('Subscription failed');
       mockRegistration.pushManager.subscribe.mockRejectedValue(error);
       
-      const result = await subscribeToNotifications(mockRegistration, 'test-key');
+      const result = await subscribeToNotifications(mockRegistration as unknown as ServiceWorkerRegistration, 'test-key');
       
       expect(result).toBeNull();
       expect(console.error).toHaveBeenCalledWith(

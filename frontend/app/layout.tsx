@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import '../styles/accessibility.css'
@@ -11,8 +11,6 @@ export const metadata: Metadata = {
   title: 'Geulpi Calendar',
   description: 'Smart calendar service with AI-powered scheduling',
   manifest: '/manifest.json',
-  themeColor: '#0066cc',
-  viewport: 'width=device-width, initial-scale=1, shrink-to-fit=no',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
@@ -32,6 +30,12 @@ export const metadata: Metadata = {
     title: 'Geulpi Calendar',
     description: 'Smart calendar service with AI-powered scheduling',
   },
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#0066cc',
 }
 
 export default function RootLayout({

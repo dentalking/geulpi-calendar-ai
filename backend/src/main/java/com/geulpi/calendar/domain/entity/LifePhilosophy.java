@@ -29,7 +29,7 @@ public class LifePhilosophy {
     private List<LifeArea> areas = new ArrayList<>();
     
     @Convert(converter = JsonConverter.class)
-    @Column(columnDefinition = "jsonb")
+    @Column(columnDefinition = "TEXT")
     private Map<String, Object> idealBalance;
     
     @OneToMany(mappedBy = "lifePhilosophy", cascade = CascadeType.ALL, orphanRemoval = true)

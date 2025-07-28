@@ -73,13 +73,9 @@ describe('performance utils', () => {
     it('should generate valid session format', () => {
       const session = getSessionInfo();
       
-      if (session.sessionId || session.id) {
-        const sessionId = session.sessionId || session.id;
-        // Session ID should be a string if present
-        if (sessionId) {
-          expect(typeof sessionId).toBe('string');
-        }
-      }
+      // Session ID should always be present
+      expect(session.sessionId).toBeDefined();
+      expect(typeof session.sessionId).toBe('string');
     });
   });
 

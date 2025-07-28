@@ -387,4 +387,11 @@ export const performanceMonitor = typeof window !== 'undefined' ? new Performanc
 // Export utilities
 export const getPerformanceReport = () => performanceMonitor?.generateReport() || null;
 export const getPerformanceMetrics = () => performanceMonitor?.getMetrics() || [];
-export const getSessionInfo = () => performanceMonitor?.getSession() || { id: '', startTime: 0, pageViews: 0, interactions: 0, errors: 0 };
+export const getSessionInfo = () => performanceMonitor?.getSession() || { 
+  sessionId: '', 
+  startTime: 0, 
+  userAgent: '',
+  connectionType: undefined,
+  deviceMemory: undefined,
+  userId: undefined
+};

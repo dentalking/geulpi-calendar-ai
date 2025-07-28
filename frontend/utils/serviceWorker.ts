@@ -157,6 +157,9 @@ export class OfflineQueue {
   }
 
   private saveQueue(): void {
+    // Only save to localStorage in browser environment
+    if (typeof window === 'undefined') return;
+    
     try {
       localStorage.setItem(this.storageKey, JSON.stringify(this.queue));
     } catch (error) {
@@ -165,6 +168,12 @@ export class OfflineQueue {
   }
 
   private loadQueue(): void {
+    // Only load from localStorage in browser environment
+    if (typeof window === 'undefined') {
+      this.queue = [];
+      return;
+    }
+    
     try {
       const stored = localStorage.getItem(this.storageKey);
       if (stored) {

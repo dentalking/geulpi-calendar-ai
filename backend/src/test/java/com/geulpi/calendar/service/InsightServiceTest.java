@@ -83,14 +83,34 @@ class InsightServiceTest {
         
         testInsights = Arrays.asList(insight1, insight2);
         
+        // Mock dependencies to prevent IllegalArgumentException
+        when(userRepository.findById("test-user-id")).thenReturn(java.util.Optional.of(testUser));
+        when(timeBalanceService.getTimeBalance(any())).thenReturn(createMockTimeBalance());
+        when(eventRepository.findByUserIdAndStartTimeBetweenOrderByStartTime(any(), any(), any()))
+                .thenReturn(Arrays.asList());
+        when(patternRepository.findByUserIdAndConfidenceGreaterThanOrderByFrequencyDesc(any(), any()))
+                .thenReturn(Arrays.asList());
+        when(insightRepository.findByUserIdAndTypeAndCreatedAtAfter(any(), any(), any()))
+                .thenReturn(Arrays.asList());
+        when(insightRepository.saveAll(any())).thenReturn(Arrays.asList());
+        
         SecurityContextHolder.clearContext();
+    }
+    
+    private com.geulpi.calendar.dto.TimeBalance createMockTimeBalance() {
+        return com.geulpi.calendar.dto.TimeBalance.builder()
+                .score(75.0f)
+                .actual(java.util.Map.of("work", 60.0, "personal", 40.0))
+                .ideal(java.util.Map.of("work", 50.0, "personal", 50.0))
+                .deviation(java.util.Map.of("work", 10.0, "personal", -10.0))
+                .build();
     }
     
     @Test
     void getInsights_WithLimit_ReturnsTopInsights() {
-        setupAuthentication("test@example.com");
+        setupAuthentication("test-user-id");
         
-        when(insightRepository.findTop5ByUserIdOrderByCreatedAtDesc("test@example.com"))
+        when(insightRepository.findTop5ByUserIdOrderByCreatedAtDesc("test-user-id"))
                 .thenReturn(testInsights);
         
         List<Insight> result = insightService.getInsights(5);
@@ -100,15 +120,15 @@ class InsightServiceTest {
         assertThat(result.get(0).getType()).isEqualTo(InsightType.OPTIMIZATION_OPPORTUNITY);
         assertThat(result.get(1).getType()).isEqualTo(InsightType.IMBALANCE);
         
-        verify(insightRepository).findTop5ByUserIdOrderByCreatedAtDesc("test@example.com");
+        verify(insightRepository).findTop5ByUserIdOrderByCreatedAtDesc("test-user-id");
     }
     
     @Test
     void getInsights_WithoutLimit_ReturnsRecentInsights() {
-        setupAuthentication("test@example.com");
+        setupAuthentication("test-user-id");
         
         when(insightRepository.findByUserIdAndCreatedAtAfterOrderByCreatedAtDesc(
-                eq("test@example.com"), any(LocalDateTime.class)))
+                eq("test-user-id"), any(LocalDateTime.class)))
                 .thenReturn(testInsights);
         
         List<Insight> result = insightService.getInsights(null);
@@ -117,22 +137,22 @@ class InsightServiceTest {
         assertThat(result).containsExactlyElementsOf(testInsights);
         
         verify(insightRepository).findByUserIdAndCreatedAtAfterOrderByCreatedAtDesc(
-                eq("test@example.com"), any(LocalDateTime.class));
+                eq("test-user-id"), any(LocalDateTime.class));
     }
     
     @Test
     void getInsights_WhenFewInsightsExist_TriggersGeneration() {
-        setupAuthentication("test@example.com");
+        setupAuthentication("test-user-id");
         
         // Return only 1 insight (less than 3)
         List<Insight> fewInsights = Arrays.asList(testInsights.get(0));
-        when(insightRepository.findTop5ByUserIdOrderByCreatedAtDesc("test@example.com"))
+        when(insightRepository.findTop5ByUserIdOrderByCreatedAtDesc("test-user-id"))
                 .thenReturn(fewInsights);
         
         List<Insight> result = insightService.getInsights(5);
         
         assertThat(result).hasSize(1);
-        verify(insightRepository).findTop5ByUserIdOrderByCreatedAtDesc("test@example.com");
+        verify(insightRepository).findTop5ByUserIdOrderByCreatedAtDesc("test-user-id");
         // Note: The actual generation logic would be tested separately as it's likely complex
     }
     
@@ -152,38 +172,38 @@ class InsightServiceTest {
     
     @Test
     void getInsights_FiltersBasedOnTimeRange() {
-        setupAuthentication("test@example.com");
+        setupAuthentication("test-user-id");
         LocalDateTime beforeCall = LocalDateTime.now().minusDays(8);
         
         when(insightRepository.findByUserIdAndCreatedAtAfterOrderByCreatedAtDesc(
-                eq("test@example.com"), any(LocalDateTime.class)))
+                eq("test-user-id"), any(LocalDateTime.class)))
                 .thenReturn(testInsights);
         
         insightService.getInsights(null);
         
         verify(insightRepository).findByUserIdAndCreatedAtAfterOrderByCreatedAtDesc(
-                eq("test@example.com"), 
+                eq("test-user-id"), 
                 argThat(dateTime -> dateTime.isAfter(beforeCall) && dateTime.isBefore(LocalDateTime.now().minusDays(6))));
     }
     
     @Test
     void getInsights_WithEmptyResult_ReturnsEmptyList() {
-        setupAuthentication("test@example.com");
+        setupAuthentication("test-user-id");
         
-        when(insightRepository.findTop5ByUserIdOrderByCreatedAtDesc("test@example.com"))
+        when(insightRepository.findTop5ByUserIdOrderByCreatedAtDesc("test-user-id"))
                 .thenReturn(Arrays.asList());
         
         List<Insight> result = insightService.getInsights(5);
         
         assertThat(result).isEmpty();
-        verify(insightRepository).findTop5ByUserIdOrderByCreatedAtDesc("test@example.com");
+        verify(insightRepository).findTop5ByUserIdOrderByCreatedAtDesc("test-user-id");
     }
     
     @Test
     void getInsights_CachingBehaviorTest() {
-        setupAuthentication("test@example.com");
+        setupAuthentication("test-user-id");
         
-        when(insightRepository.findTop5ByUserIdOrderByCreatedAtDesc("test@example.com"))
+        when(insightRepository.findTop5ByUserIdOrderByCreatedAtDesc("test-user-id"))
                 .thenReturn(testInsights);
         
         // Call twice to test caching behavior
@@ -191,12 +211,12 @@ class InsightServiceTest {
         insightService.getInsights(5);
         
         // Repository should be called only once due to caching
-        verify(insightRepository, times(1)).findTop5ByUserIdOrderByCreatedAtDesc("test@example.com");
+        verify(insightRepository, times(1)).findTop5ByUserIdOrderByCreatedAtDesc("test-user-id");
     }
     
-    private void setupAuthentication(String username) {
+    private void setupAuthentication(String userId) {
         Authentication authentication = new UsernamePasswordAuthenticationToken(
-                username, null, Arrays.asList());
+                userId, null, Arrays.asList());
         SecurityContextHolder.getContext().setAuthentication(authentication);
     }
 }

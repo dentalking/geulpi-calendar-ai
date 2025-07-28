@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { PaperPlaneIcon, PhotoIcon, MicrophoneIcon, StopIcon } from '@heroicons/react/24/outline';
+import { PaperPlaneIcon, PhotoIcon, MicrophoneIcon, StopIcon } from '@/components/ui/icons';
 
 interface MessageInputProps {
   onSendMessage: (message: string) => void;

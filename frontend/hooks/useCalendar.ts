@@ -17,8 +17,10 @@ export const useCalendar = (startDate: Date, endDate: Date) => {
   
   const { data, loading, error, refetch } = useGetEventsQuery({
     variables: {
-      startDate: startDate.toISOString(),
-      endDate: endDate.toISOString(),
+      filter: {
+        startDate: startDate.toISOString().split('T')[0], // Extract date part only
+        endDate: endDate.toISOString().split('T')[0],
+      },
     },
     fetchPolicy: 'cache-and-network',
   });
@@ -40,9 +42,8 @@ export const useCalendar = (startDate: Date, endDate: Date) => {
     title: event.title,
     start: new Date(event.startTime),
     end: new Date(event.endTime),
-    category: event.category,
     description: event.description || undefined,
-    location: event.location || undefined,
+    location: event.location ? `${event.location.name}${event.location.address ? ', ' + event.location.address : ''}` : undefined,
   })) || [];
 
   const handleCreateEvent = useCallback(async (newEvent: Omit<CalendarEvent, 'id'>) => {
@@ -53,9 +54,11 @@ export const useCalendar = (startDate: Date, endDate: Date) => {
             title: newEvent.title,
             startTime: newEvent.start.toISOString(),
             endTime: newEvent.end.toISOString(),
-            category: newEvent.category || 'OTHER',
             description: newEvent.description,
-            location: newEvent.location,
+            location: newEvent.location ? {
+              name: newEvent.location,
+              address: null,
+            } : undefined,
           },
         },
       });
@@ -74,9 +77,11 @@ export const useCalendar = (startDate: Date, endDate: Date) => {
             title: updates.title,
             startTime: updates.start?.toISOString(),
             endTime: updates.end?.toISOString(),
-            category: updates.category,
             description: updates.description,
-            location: updates.location,
+            location: updates.location ? {
+              name: updates.location,
+              address: null,
+            } : undefined,
           },
         },
       });

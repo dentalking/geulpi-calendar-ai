@@ -10,7 +10,7 @@ import {
   ClockIcon,
   MapPinIcon,
   CalendarIcon
-} from '@heroicons/react/24/outline';
+} from '@/components/ui/icons';
 
 interface Event {
   id: string;

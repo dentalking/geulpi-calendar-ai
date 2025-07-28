@@ -122,7 +122,6 @@ const UpdateProfileTestComponent = () => {
       variables: {
         input: {
           name: 'Updated Name',
-          email: 'updated@example.com',
         },
       },
     });
@@ -344,8 +343,7 @@ describe('GraphQL Hooks', () => {
             variables: {
               input: {
                 name: 'Updated Name',
-                email: 'updated@example.com',
-              },
+                    },
             },
           },
           result: {
@@ -353,8 +351,7 @@ describe('GraphQL Hooks', () => {
               updateProfile: {
                 id: '1',
                 name: 'Updated Name',
-                email: 'updated@example.com',
-              },
+                    },
             },
           },
         },
@@ -387,8 +384,7 @@ describe('GraphQL Hooks', () => {
             variables: {
               input: {
                 name: 'Updated Name',
-                email: 'updated@example.com',
-              },
+                    },
             },
           },
           error: new Error('Update failed'),
@@ -605,7 +601,6 @@ describe('GraphQL Hooks', () => {
             variables: {
               input: {
                 name: 'Cache Updated Name',
-                email: 'cache@example.com',
               },
             },
           });
@@ -636,7 +631,6 @@ describe('GraphQL Hooks', () => {
             variables: {
               input: {
                 name: 'Cache Updated Name',
-                email: 'cache@example.com',
               },
             },
           },

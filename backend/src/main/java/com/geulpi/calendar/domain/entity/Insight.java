@@ -30,7 +30,7 @@ public class Insight {
     @Column(length = 1000, nullable = false)
     private String content;
     
-    @Column(columnDefinition = "jsonb")
+    @Column(columnDefinition = "TEXT")
     @Convert(converter = JsonConverter.class)
     private Map<String, Object> data;
     

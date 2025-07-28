@@ -37,7 +37,7 @@ export function TodaySchedule() {
 
   const events = data?.events || []
   const sortedEvents = [...events].sort((a, b) => 
-    new Date(a.start).getTime() - new Date(b.start).getTime()
+    new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
   )
 
   return (
@@ -62,7 +62,7 @@ export function TodaySchedule() {
                 <div className="flex justify-between items-start">
                   <h3 className="font-medium text-gray-900">{event.title}</h3>
                   <span className="text-sm text-gray-500">
-                    {format(new Date(event.start), 'HH:mm')} - {format(new Date(event.end), 'HH:mm')}
+                    {format(new Date(event.startTime), 'HH:mm')} - {format(new Date(event.endTime), 'HH:mm')}
                   </span>
                 </div>
                 {event.description && (

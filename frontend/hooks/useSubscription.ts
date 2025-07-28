@@ -27,7 +27,7 @@ export function useSubscription<TData = any, TVariables = any>({
       try {
         const observable = client.subscribe({
           query: subscription,
-          variables,
+          variables: variables as any,
         });
 
         subscriptionRef.current = observable.subscribe({

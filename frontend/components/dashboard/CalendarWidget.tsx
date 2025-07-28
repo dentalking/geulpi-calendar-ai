@@ -42,7 +42,7 @@ export function CalendarWidget() {
 
   const getEventsForDay = (day: Date) => {
     return events.filter(event => {
-      const eventDate = new Date(event.start)
+      const eventDate = new Date(event.startTime)
       return isSameDay(eventDate, day)
     })
   }

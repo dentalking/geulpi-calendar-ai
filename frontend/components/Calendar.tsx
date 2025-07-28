@@ -7,6 +7,8 @@ import {
   View,
   Event,
   SlotInfo,
+  EventProps,
+  Components,
 } from 'react-big-calendar'
 import withDragAndDrop, { EventInteractionArgs } from 'react-big-calendar/lib/addons/dragAndDrop'
 import { format, parse, startOfWeek, getDay, isToday } from 'date-fns'
@@ -29,7 +31,7 @@ const localizer = dateFnsLocalizer({
   locales,
 })
 
-const DnDCalendar = withDragAndDrop(BigCalendar)
+const DnDCalendar = withDragAndDrop<CalendarEvent>(BigCalendar) as any
 
 export interface CalendarEvent extends Event {
   id: string
@@ -136,11 +138,10 @@ export default function Calendar({
     announceToScreenReader(`${dateStr}에 새 일정 추가를 위해 선택했습니다`, 'polite')
   }, [onSelectSlot])
 
-  const handleSelectEvent = useCallback((event: object, e: SyntheticEvent<HTMLElement>) => {
-    const calendarEvent = event as CalendarEvent
-    onSelectEvent?.(calendarEvent)
+  const handleSelectEvent = useCallback((event: CalendarEvent, e: SyntheticEvent<HTMLElement>) => {
+    onSelectEvent?.(event)
     // Announce event selection
-    announceToScreenReader(`일정 "${calendarEvent.title}" 선택했습니다`, 'polite')
+    announceToScreenReader(`일정 "${event.title}" 선택했습니다`, 'polite')
   }, [onSelectEvent])
 
   const handleEventDrop = useCallback((args: EventInteractionArgs<CalendarEvent>) => {
@@ -176,7 +177,7 @@ export default function Calendar({
   }
 
   // Custom event component with data-testid
-  const EventComponent = ({ event }: { event: CalendarEvent }) => {
+  const EventComponent = ({ event }: EventProps<CalendarEvent>) => {
     const testId = event.resource?.testId || `event-${event.resource?.originalIndex || event.id}`
     return (
       <div 

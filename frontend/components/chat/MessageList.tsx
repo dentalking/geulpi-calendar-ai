@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import { ChatMessage } from './ChatInterface';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -57,9 +58,11 @@ function MessageBubble({ message }: { message: ChatMessage }) {
               {/* Image Display */}
               {message.imageUrl && (
                 <div className="mb-2">
-                  <img
+                  <Image
                     src={message.imageUrl}
                     alt="Uploaded image"
+                    width={300}
+                    height={200}
                     className="max-w-full h-auto rounded-lg border"
                     style={{ maxHeight: '200px' }}
                   />

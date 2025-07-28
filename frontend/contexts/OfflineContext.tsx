@@ -29,6 +29,9 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
   const [queue, setQueue] = useState<OfflineQueueItem[]>([]);
 
   useEffect(() => {
+    // Only access localStorage in browser environment
+    if (typeof window === 'undefined') return;
+    
     const savedQueue = localStorage.getItem(OFFLINE_QUEUE_KEY);
     if (savedQueue) {
       try {
@@ -41,6 +44,9 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // Only save to localStorage in browser environment
+    if (typeof window === 'undefined') return;
+    
     localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
   }, [queue]);
 
@@ -66,7 +72,10 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
 
   const clearQueue = useCallback(() => {
     setQueue([]);
-    localStorage.removeItem(OFFLINE_QUEUE_KEY);
+    // Only clear localStorage in browser environment
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(OFFLINE_QUEUE_KEY);
+    }
   }, []);
 
   const processQueue = useCallback(async () => {
