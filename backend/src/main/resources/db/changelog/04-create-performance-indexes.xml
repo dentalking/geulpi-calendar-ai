@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.9.xsd">
+
+    <changeSet id="create-performance-indexes-001" author="system">
+        <comment>Create performance indexes for frequently queried columns</comment>
+
+        <!-- Events table indexes -->
+        <createIndex indexName="idx_events_user_start_time" tableName="events">
+            <column name="user_id"/>
+            <column name="start_time"/>
+        </createIndex>
+
+        <createIndex indexName="idx_events_user_end_time" tableName="events">
+            <column name="user_id"/>
+            <column name="end_time"/>
+        </createIndex>
+
+        <createIndex indexName="idx_events_user_area" tableName="events">
+            <column name="user_id"/>
+            <column name="area_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_events_google_event_id" tableName="events">
+            <column name="google_event_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_events_title_search" tableName="events">
+            <column name="title"/>
+        </createIndex>
+
+        <createIndex indexName="idx_events_created_at" tableName="events">
+            <column name="created_at"/>
+        </createIndex>
+
+        <!-- Users table indexes -->
+        <!-- idx_users_email already created in 01-create-initial-schema.xml -->
+        <!-- idx_users_google_id removed as google_id column doesn't exist -->
+
+        <!-- Patterns table indexes -->
+        <!-- idx_patterns_user_confidence already created in 03-create-preferences-patterns-schema.xml -->
+        <!-- idx_patterns_user_frequency already created in 03-create-preferences-patterns-schema.xml -->
+
+        <!-- Insights table indexes -->
+        <!-- idx_insights_user_generated already created in 03-create-preferences-patterns-schema.xml -->
+        
+        <createIndex indexName="idx_insights_user_type" tableName="insights">
+            <column name="user_id"/>
+            <column name="type"/>
+        </createIndex>
+
+        <createIndex indexName="idx_insights_actionable" tableName="insights">
+            <column name="actionable"/>
+        </createIndex>
+
+        <!-- Suggestions table indexes -->
+        <!-- idx_suggestions_user_status already created in 03-create-preferences-patterns-schema.xml -->
+        
+        <createIndex indexName="idx_suggestions_user_created" tableName="suggestions">
+            <column name="user_id"/>
+            <column name="created_at"/>
+        </createIndex>
+
+        <createIndex indexName="idx_suggestions_expires_at" tableName="suggestions">
+            <column name="expires_at"/>
+        </createIndex>
+
+        <!-- Life areas table indexes -->
+        <createIndex indexName="idx_life_areas_philosophy_name" tableName="life_areas">
+            <column name="life_philosophy_id"/>
+            <column name="name"/>
+        </createIndex>
+
+        <!-- Time slots is a column, not a table - removed related indexes -->
+
+    </changeSet>
+
+    <changeSet id="create-composite-indexes-002" author="system">
+        <comment>Create composite indexes for complex queries</comment>
+
+        <!-- Events time range queries -->
+        <createIndex indexName="idx_events_user_time_range" tableName="events">
+            <column name="user_id"/>
+            <column name="start_time"/>
+            <column name="end_time"/>
+        </createIndex>
+
+        <!-- Events by area and time -->
+        <createIndex indexName="idx_events_user_area_time" tableName="events">
+            <column name="user_id"/>
+            <column name="area_id"/>
+            <column name="start_time"/>
+        </createIndex>
+
+        <!-- Full text search composite -->
+        <createIndex indexName="idx_events_user_search" tableName="events">
+            <column name="user_id"/>
+            <column name="title"/>
+            <column name="description"/>
+        </createIndex>
+
+        <!-- Analytics queries -->
+        <createIndex indexName="idx_events_analytics" tableName="events">
+            <column name="user_id"/>
+            <column name="area_id"/>
+            <column name="start_time"/>
+            <column name="end_time"/>
+        </createIndex>
+
+    </changeSet>
+
+    <changeSet id="create-partial-indexes-003" author="system" dbms="postgresql">
+        <comment>Create partial indexes for PostgreSQL optimization</comment>
+
+        <!-- Only index non-null Google event IDs -->
+        <sql>
+            CREATE INDEX idx_events_google_event_id_partial 
+            ON events (google_event_id) 
+            WHERE google_event_id IS NOT NULL;
+        </sql>
+
+        <!-- Only index actionable insights -->
+        <sql>
+            CREATE INDEX idx_insights_actionable_partial 
+            ON insights (user_id, created_at) 
+            WHERE actionable = true;
+        </sql>
+
+        <!-- Only index pending suggestions -->
+        <sql>
+            CREATE INDEX idx_suggestions_pending_partial 
+            ON suggestions (user_id, created_at) 
+            WHERE status = 'PENDING';
+        </sql>
+
+        <!-- Only index high confidence patterns -->
+        <sql>
+            CREATE INDEX idx_patterns_high_confidence_partial 
+            ON patterns (user_id, frequency) 
+            WHERE confidence > 0.7;
+        </sql>
+
+    </changeSet>
+
+    <changeSet id="analyze-tables-004" author="system" dbms="postgresql">
+        <comment>Update table statistics for query optimizer</comment>
+        
+        <sql>ANALYZE events;</sql>
+        <sql>ANALYZE users;</sql>
+        <sql>ANALYZE patterns;</sql>
+        <sql>ANALYZE insights;</sql>
+        <sql>ANALYZE suggestions;</sql>
+        <sql>ANALYZE life_areas;</sql>
+    </changeSet>
+
+</databaseChangeLog>

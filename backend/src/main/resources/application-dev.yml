@@ -1,0 +1,67 @@
+spring:
+  graphql:
+    graphiql:
+      enabled: true
+      
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://dev-db.geulpi.com:5432/geulpi_dev}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+    
+  jpa:
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        generate_statistics: false
+        
+  data:
+    redis:
+      host: ${REDIS_HOST:dev-redis.geulpi.com}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD}
+      
+  kafka:
+    bootstrap-servers: ${KAFKA_BROKERS:dev-kafka.geulpi.com:9092}
+    
+  liquibase:
+    contexts: dev
+    
+logging:
+  level:
+    com.geulpi.calendar: INFO
+    org.springframework.security: INFO
+    org.springframework.graphql: INFO
+    
+app:
+  cors:
+    allowed-origins: ${ALLOWED_ORIGINS:https://dev.geulpi.com}
+  oauth2:
+    redirectUri: https://dev.geulpi.com/auth/callback
+    
+jwt:
+  secret: ${JWT_SECRET}
+  
+google:
+  client:
+    id: ${GOOGLE_CLIENT_ID}
+    secret: ${GOOGLE_CLIENT_SECRET}
+  api:
+    key: ${GOOGLE_API_KEY}
+    
+openai:
+  api:
+    key: ${OPENAI_API_KEY}
+    
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  metrics:
+    export:
+      prometheus:
+        enabled: true

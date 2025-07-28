@@ -1,0 +1,89 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Next.js
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/dist/
+
+# Spring Boot
+backend/build/
+backend/target/
+backend/.gradle/
+backend/gradle/
+
+# ML Server
+ml-server/__pycache__/
+ml-server/*.pyc
+ml-server/venv/
+ml-server/.env
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Test results
+test-results/
+coverage/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Docker
+docker-compose.override.yml
+
+# MCP Server logs
+mcp-*.log
+
+# E2E Test artifacts
+e2e/test-results/
+e2e/playwright-report/
+e2e/screenshots/
+e2e/videos/
+
+# Generated files
+frontend/generated/
+backend/generated/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Redis dump
+dump.rdb
+
+# Kafka logs
+kafka-logs/
+
+# AI/ML models (if large)
+*.model
+*.pkl
+*.h5
+
+# Build artifacts
+dist/
+build/

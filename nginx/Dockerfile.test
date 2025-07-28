@@ -1,0 +1,26 @@
+FROM nginx:1.25-alpine
+
+# Install dependencies
+RUN apk add --no-cache openssl curl
+
+# Copy nginx test configuration
+COPY nginx.test.conf /etc/nginx/nginx.conf
+
+# Generate self-signed SSL certificates for testing
+RUN mkdir -p /etc/nginx/certs && \
+    openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+    -keyout /etc/nginx/certs/key.pem \
+    -out /etc/nginx/certs/cert.pem \
+    -subj "/C=KR/ST=Seoul/L=Seoul/O=Geulpi/OU=Testing/CN=localhost"
+
+# Create necessary directories
+RUN mkdir -p /var/log/nginx /var/cache/nginx /var/run
+
+# Expose ports
+EXPOSE 80 443
+
+# Health check
+HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost/health || exit 1
+
+CMD ["nginx", "-g", "daemon off;"]

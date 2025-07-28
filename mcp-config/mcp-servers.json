@@ -1,0 +1,33 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@latest"
+      ]
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/workspace"
+      ]
+    },
+    "memory": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-memory"
+      ]
+    },
+    "context7": {
+      "command": "node",
+      "args": [
+        "/Users/heerackbang/Library/Application Support/Claude/servers/node_modules/servers/build/context7/index.js",
+        "/Users/heerackbang/Library/Application Support/Claude/servers/node_modules/servers/context7/libraries.json"
+      ]
+    }
+  }
+}

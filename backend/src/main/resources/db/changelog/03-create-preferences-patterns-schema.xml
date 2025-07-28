@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    
+    <changeSet id="3" author="geulpi">
+        <!-- This changeset is merged into 02-create-missing-tables.xml -->
+        <!-- Keeping only performance-critical columns that were not in the main schema -->
+        
+        <!-- Add missing columns to insights table -->
+        <addColumn tableName="insights">
+            <column name="content" type="varchar(1000)"/>
+            <column name="data" type="jsonb"/>
+            <column name="impact_score" type="float" defaultValueNumeric="0.0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="generated_at" type="timestamp">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        
+        <!-- Add missing columns to impact_analyses -->
+        <addColumn tableName="impact_analyses">
+            <column name="balance_change" type="jsonb"/>
+            <column name="affected_areas" type="text"/>
+            <column name="time_saved" type="int"/>
+            <column name="conflicts_resolved" type="int"/>
+        </addColumn>
+        
+        <!-- Add insight relationship to suggestions -->
+        <addColumn tableName="suggestions">
+            <column name="insight_id" type="varchar(36)">
+                <constraints foreignKeyName="fk_suggestion_insight"
+                            references="insights(id)" deleteCascade="true"/>
+            </column>
+        </addColumn>
+        
+        <!-- Additional indexes for performance -->
+        <createIndex tableName="patterns" indexName="idx_patterns_user_frequency">
+            <column name="user_id"/>
+            <column name="frequency" descending="true"/>
+        </createIndex>
+        
+        <createIndex tableName="patterns" indexName="idx_patterns_user_confidence">
+            <column name="user_id"/>
+            <column name="confidence" descending="true"/>
+        </createIndex>
+        
+        <createIndex tableName="insights" indexName="idx_insights_user_generated">
+            <column name="user_id"/>
+            <column name="generated_at" descending="true"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>

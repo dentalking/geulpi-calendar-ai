@@ -1,0 +1,84 @@
+mutation ProcessNaturalLanguage($input: String!) {
+  processNaturalLanguage(input: $input) {
+    understood
+    intent
+    events {
+      id
+      title
+      startTime
+      endTime
+      area {
+        id
+        name
+        color
+      }
+    }
+    suggestions {
+      id
+      type
+      title
+      description
+      priority
+    }
+    message
+    clarificationNeeded
+    clarificationPrompts
+  }
+}
+
+mutation ProcessOCR($imageBase64: String!) {
+  processOCR(imageBase64: $imageBase64) {
+    understood
+    intent
+    events {
+      id
+      title
+      startTime
+      endTime
+      area {
+        id
+        name
+        color
+      }
+    }
+    suggestions {
+      id
+      type
+      title
+      description
+      priority
+    }
+    message
+    clarificationNeeded
+    clarificationPrompts
+  }
+}
+
+subscription NewSuggestion($userId: ID!) {
+  newSuggestion(userId: $userId) {
+    id
+    type
+    title
+    description
+    proposedEvent {
+      id
+      title
+      startTime
+      endTime
+      area {
+        id
+        name
+        color
+      }
+    }
+    reasoning
+    impact {
+      balanceImprovement
+      conflictResolution
+      productivityGain
+    }
+    priority
+    expiresAt
+    status
+  }
+}

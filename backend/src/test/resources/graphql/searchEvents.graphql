@@ -1,0 +1,8 @@
+query SearchEvents($query: String!) {
+    searchEvents(query: $query) {
+        id
+        title
+        description
+        startTime
+    }
+}

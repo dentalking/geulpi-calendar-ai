@@ -1,0 +1,199 @@
+services:
+  # Test Database
+  postgres-test:
+    image: postgres:16-alpine
+    container_name: geulpi_postgres_test
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-geulpi_test_db}
+      POSTGRES_USER: ${POSTGRES_USER:-geulpi_test_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-test_password}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Test Redis
+  redis-test:
+    image: redis:7-alpine
+    container_name: geulpi_redis_test
+    command: redis-server --requirepass ${REDIS_PASSWORD:-test_redis_password}
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_test_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "auth", "${REDIS_PASSWORD:-test_redis_password}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Test Kafka
+  kafka-test:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: geulpi_kafka_test
+    depends_on:
+      - zookeeper-test
+    ports:
+      - "9093:9093"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper-test:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9093", "--list"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  zookeeper-test:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: geulpi_zookeeper_test
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2182:2181"
+
+  # Backend Service
+  backend-test:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: test
+    container_name: geulpi_backend_test
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+      kafka-test:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: test
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-test:5432/${POSTGRES_DB:-geulpi_test_db}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-geulpi_test_user}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-test_password}
+      SPRING_REDIS_HOST: redis-test
+      SPRING_REDIS_PASSWORD: ${REDIS_PASSWORD:-test_redis_password}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka-test:9093
+      JWT_SECRET: ${JWT_SECRET:-test_jwt_secret_key_for_e2e_testing}
+      GOOGLE_CLIENT_ID: test_google_client_id
+      GOOGLE_CLIENT_SECRET: test_google_client_secret
+      USE_MOCK_GOOGLE_API: ${USE_MOCK_GOOGLE_API:-true}
+      USE_MOCK_OPENAI_API: ${USE_MOCK_OPENAI_API:-true}
+    ports:
+      - "8081:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # Frontend Service
+  frontend-test:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: test
+    container_name: geulpi_frontend_test
+    depends_on:
+      backend-test:
+        condition: service_healthy
+    environment:
+      NEXT_PUBLIC_GRAPHQL_URL: http://backend-test:8080/graphql
+      NEXT_PUBLIC_WS_URL: ws://backend-test:8080/subscriptions
+      NODE_ENV: test
+    ports:
+      - "3001:3000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ML Server
+  ml-server-test:
+    build:
+      context: ./ml-server
+      dockerfile: Dockerfile
+      target: test
+    container_name: geulpi_ml_server_test
+    depends_on:
+      kafka-test:
+        condition: service_healthy
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka-test:9093
+      USE_MOCK_MODELS: "true"
+      PYTHONUNBUFFERED: 1
+    ports:
+      - "8001:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Nginx
+  nginx-test:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile.test
+    container_name: geulpi_nginx_test
+    depends_on:
+      frontend-test:
+        condition: service_healthy
+      backend-test:
+        condition: service_healthy
+      ml-server-test:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.test.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs/test:/etc/nginx/certs:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # E2E Test Runner
+  e2e-test:
+    build:
+      context: ./e2e
+      dockerfile: Dockerfile
+    container_name: geulpi_e2e_test
+    depends_on:
+      nginx-test:
+        condition: service_healthy
+    environment:
+      BASE_URL: http://nginx-test
+      # MCP server connections (host.docker.internal for accessing host services)
+      MCP_MEMORY_URL: http://host.docker.internal:8091
+      MCP_FILESYSTEM_URL: http://host.docker.internal:8092
+      MCP_PLAYWRIGHT_URL: http://host.docker.internal:8093
+      MCP_CONTEXT7_URL: http://host.docker.internal:8094
+    volumes:
+      - ./e2e:/app
+      - ./test-results:/app/test-results
+      - ./frontend:/app/frontend:ro
+      - ./backend:/app/backend:ro
+      - ./ml-server:/app/ml-server:ro
+    command: npm test
+
+volumes:
+  postgres_test_data:
+  redis_test_data:
+
+networks:
+  default:
+    name: geulpi_test_network

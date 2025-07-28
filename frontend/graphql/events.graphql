@@ -1,0 +1,116 @@
+query GetEvents($filter: EventFilter!) {
+  events(filter: $filter) {
+    id
+    title
+    description
+    startTime
+    endTime
+    allDay
+    area {
+      id
+      name
+      color
+    }
+    location {
+      name
+      address
+    }
+    recurrence {
+      frequency
+      interval
+      endDate
+      daysOfWeek
+    }
+    attendees
+    createdAt
+    updatedAt
+  }
+}
+
+mutation CreateEvent($input: CreateEventInput!) {
+  createEvent(input: $input) {
+    id
+    title
+    description
+    startTime
+    endTime
+    allDay
+    area {
+      id
+      name
+      color
+    }
+    location {
+      name
+      address
+    }
+  }
+}
+
+mutation UpdateEvent($id: ID!, $input: UpdateEventInput!) {
+  updateEvent(id: $id, input: $input) {
+    id
+    title
+    description
+    startTime
+    endTime
+    allDay
+    area {
+      id
+      name
+      color
+    }
+    location {
+      name
+      address
+    }
+  }
+}
+
+mutation DeleteEvent($id: ID!) {
+  deleteEvent(id: $id)
+}
+
+subscription EventUpdates($userId: ID!) {
+  eventUpdated(userId: $userId) {
+    id
+    title
+    description
+    startTime
+    endTime
+    allDay
+    area {
+      id
+      name
+      color
+    }
+    location {
+      name
+      address
+    }
+  }
+}
+
+subscription EventCreated($userId: ID!) {
+  eventCreated(userId: $userId) {
+    id
+    title
+    description
+    startTime
+    endTime
+    allDay
+    area {
+      id
+      name
+      color
+    }
+    location {
+      name
+      address
+    }
+  }
+}
+
+subscription EventDeleted($userId: ID!) {
+  eventDeleted(userId: $userId)
+}

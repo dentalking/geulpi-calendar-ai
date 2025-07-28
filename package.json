@@ -1,0 +1,46 @@
+{
+  "name": "geulpi-project",
+  "version": "1.0.0",
+  "description": "Geulpi Calendar Service - AI-powered calendar management",
+  "private": true,
+  "scripts": {
+    "setup": "./scripts/setup.sh",
+    "setup:mcp": "docker-compose -f docker-compose.mcp.yml up -d",
+    "dev": "docker-compose up -d",
+    "dev:full": "docker-compose up -d && docker-compose -f docker-compose.mcp.yml up -d",
+    "stop": "docker-compose down",
+    "stop:full": "docker-compose down && docker-compose -f docker-compose.mcp.yml down",
+    "logs": "docker-compose logs -f",
+    "logs:mcp": "docker-compose -f docker-compose.mcp.yml logs -f",
+    "test:e2e": "./scripts/test-e2e.sh",
+    "test:e2e:local": "./scripts/test-e2e.sh --local",
+    "test:e2e:headed": "./scripts/test-e2e.sh --headed",
+    "test:e2e:debug": "./scripts/test-e2e.sh --debug",
+    "test:e2e:smart": "./scripts/smart-e2e-cycle.sh",
+    "test:e2e:super": "./scripts/super-smart-e2e-cycle.sh",
+    "test:e2e:auto": "node ./scripts/auto-orchestrator.js",
+    "test:e2e:v4": "node ./scripts/multi-agent-orchestrator-v4.js",
+    "test:e2e:agents": "node ./scripts/multi-agent-orchestrator-v4.js",
+    "demo:v4": "node ./scripts/demo-v4-system.js",
+    "test:e2e:v5": "node ./e2e/scripts/run-v5.js",
+    "monitor:v5": "node ./e2e/monitor/v5-hierarchy-monitor.js",
+    "demo:v5": "node ./e2e/scripts/demo-v5.js",
+    "develop:features": "node ./scripts/feature-development-orchestrator.js",
+    "test:mcp": "node ./scripts/test-mcp-integration.js",
+    "test:e2e:feedback": "./scripts/e2e-feedback-loop.sh",
+    "tdd": "./scripts/tdd-workflow.sh",
+    "clean": "docker-compose down -v && docker system prune -f",
+    "clean:full": "docker-compose down -v && docker-compose -f docker-compose.mcp.yml down -v && docker system prune -f"
+  },
+  "workspaces": [
+    "frontend",
+    "e2e"
+  ],
+  "devDependencies": {
+    "@types/node": "^20.10.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}

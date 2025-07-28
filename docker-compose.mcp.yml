@@ -1,0 +1,116 @@
+services:
+  # Playwright MCP Server
+  playwright-mcp:
+    image: node:18-alpine
+    container_name: geulpi_playwright_mcp
+    working_dir: /app
+    environment:
+      - NODE_ENV=development
+      - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+    volumes:
+      - .:/app/project:ro
+      - playwright_cache:/ms-playwright
+    networks:
+      - geulpi-project-1_geulpi-network
+    command: sh -c "npm install -g @playwright/mcp@latest && npx @playwright/mcp"
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "playwright"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Sequential Thinking MCP Server
+  sequential-thinking-mcp:
+    image: node:18-alpine
+    container_name: geulpi_sequential_thinking_mcp
+    working_dir: /app
+    volumes:
+      - .:/app/project:ro
+    networks:
+      - geulpi-project-1_geulpi-network
+    command: sh -c "npm install -g @modelcontextprotocol/server-memory && npx @modelcontextprotocol/server-memory"
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "memory"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Browser Tools MCP Server
+  browser-tools-mcp:
+    image: node:18-alpine
+    container_name: geulpi_browser_tools_mcp
+    working_dir: /app
+    volumes:
+      - .:/app/project:ro
+    networks:
+      - geulpi-project-1_geulpi-network
+    command: sh -c "npm install -g @modelcontextprotocol/server-filesystem && npx @modelcontextprotocol/server-filesystem /app/project"
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "filesystem"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Context7 MCP Server
+  context7-mcp:
+    image: node:18-alpine
+    container_name: geulpi_context7_mcp
+    working_dir: /app
+    environment:
+      - CONTEXT7_API_KEY=${CONTEXT7_API_KEY}
+    volumes:
+      - .:/app/project:ro
+    networks:
+      - geulpi-project-1_geulpi-network
+    command: sh -c "npm install -g mcp-context7 && npx mcp-context7"
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "context7"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # MCP Gateway for HTTP access
+  mcp-gateway:
+    image: nginx:alpine
+    container_name: geulpi_mcp_gateway
+    ports:
+      - "8090:80"
+    volumes:
+      - ./mcp-config/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - geulpi-project-1_geulpi-network
+    depends_on:
+      - playwright-mcp
+      - sequential-thinking-mcp
+      - browser-tools-mcp
+      - context7-mcp
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Health Check Dashboard
+  mcp-health:
+    image: nginx:alpine
+    container_name: geulpi_mcp_health
+    ports:
+      - "9091:80"
+    volumes:
+      - ./mcp-config/health.html:/usr/share/nginx/html/index.html:ro
+    networks:
+      - geulpi-project-1_geulpi-network
+    depends_on:
+      - mcp-gateway
+
+volumes:
+  playwright_cache:
+  mcp_node_modules:
+
+networks:
+  geulpi-project-1_geulpi-network:
+    external: true

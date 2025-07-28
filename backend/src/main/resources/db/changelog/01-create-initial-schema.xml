@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    
+    <changeSet id="1" author="geulpi">
+        <!-- Users table -->
+        <createTable tableName="users">
+            <column name="id" type="varchar(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="email" type="varchar(255)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="name" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="onboarding_completed" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="timestamp">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="timestamp">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        
+        <!-- Life Philosophies table -->
+        <createTable tableName="life_philosophies">
+            <column name="id" type="varchar(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="user_id" type="varchar(36)">
+                <constraints nullable="false" foreignKeyName="fk_life_philosophy_user" 
+                            references="users(id)" deleteCascade="true"/>
+            </column>
+            <column name="ideal_balance" type="jsonb"/>
+        </createTable>
+        
+        <!-- Life Areas table -->
+        <createTable tableName="life_areas">
+            <column name="id" type="varchar(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="color" type="varchar(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="icon" type="varchar(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="target_percentage" type="float">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="varchar(500)"/>
+            <column name="life_philosophy_id" type="varchar(36)">
+                <constraints foreignKeyName="fk_life_area_philosophy" 
+                            references="life_philosophies(id)" deleteCascade="true"/>
+            </column>
+        </createTable>
+        
+        <!-- Events table -->
+        <createTable tableName="events">
+            <column name="id" type="varchar(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="title" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="varchar(1000)"/>
+            <column name="start_time" type="timestamp">
+                <constraints nullable="false"/>
+            </column>
+            <column name="end_time" type="timestamp">
+                <constraints nullable="false"/>
+            </column>
+            <column name="all_day" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="timezone" type="varchar(50)" defaultValue="Asia/Seoul">
+                <constraints nullable="false"/>
+            </column>
+            <column name="area_id" type="varchar(36)">
+                <constraints nullable="false" foreignKeyName="fk_event_area" 
+                            references="life_areas(id)"/>
+            </column>
+            <column name="ai_confidence" type="float">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source" type="varchar(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="attendees" type="text"/>
+            <column name="google_event_id" type="varchar(255)"/>
+            <column name="created_by" type="varchar(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="balance_impact" type="float">
+                <constraints nullable="false"/>
+            </column>
+            <column name="tags" type="text"/>
+            <column name="color" type="varchar(50)"/>
+            <column name="user_id" type="varchar(36)">
+                <constraints nullable="false" foreignKeyName="fk_event_user" 
+                            references="users(id)" deleteCascade="true"/>
+            </column>
+            <column name="created_at" type="timestamp">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="timestamp">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        
+        <!-- Create indexes -->
+        <createIndex tableName="users" indexName="idx_users_email">
+            <column name="email"/>
+        </createIndex>
+        
+        <createIndex tableName="events" indexName="idx_events_user_time">
+            <column name="user_id"/>
+            <column name="start_time"/>
+        </createIndex>
+        
+        <createIndex tableName="events" indexName="idx_events_google_id">
+            <column name="google_event_id"/>
+        </createIndex>
+    </changeSet>
+    
+    <changeSet id="2" author="geulpi">
+        <!-- OAuth2 Tokens table -->
+        <createTable tableName="oauth2_tokens">
+            <column name="id" type="varchar(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="user_id" type="varchar(36)">
+                <constraints nullable="false" unique="true" foreignKeyName="fk_oauth2_token_user"
+                            references="users(id)" deleteCascade="true"/>
+            </column>
+            <column name="provider" type="varchar(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="access_token" type="text">
+                <constraints nullable="false"/>
+            </column>
+            <column name="refresh_token" type="text"/>
+            <column name="expires_at" type="timestamp"/>
+            <column name="scope" type="text"/>
+            <column name="token_type" type="varchar(50)"/>
+            <column name="created_at" type="timestamp">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="timestamp">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        
+        <!-- Create index -->
+        <createIndex tableName="oauth2_tokens" indexName="idx_oauth2_tokens_user_provider">
+            <column name="user_id"/>
+            <column name="provider"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>

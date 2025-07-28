@@ -1,0 +1,72 @@
+# Dashboard queries for time balance and insights
+
+query GetDashboardData($period: AnalyticsPeriod!) {
+  timeBalance(period: $period) {
+    period
+    actual
+    ideal
+    deviation
+    score
+  }
+  insights(limit: 10) {
+    id
+    type
+    title
+    description
+    severity
+    actionable
+    createdAt
+    suggestedActions {
+      id
+      type
+      title
+      description
+      priority
+      impact {
+        balanceImprovement
+        conflictResolution
+        productivityGain
+      }
+    }
+  }
+  me {
+    id
+    lifePhilosophy {
+      areas {
+        id
+        name
+        color
+        icon
+        targetPercentage
+      }
+    }
+  }
+}
+
+query GetUpcomingEvents {
+  upcomingEvents(limit: 10) {
+    id
+    title
+    startTime
+    endTime
+    area {
+      id
+      name
+      color
+    }
+  }
+}
+
+mutation AcceptInsightSuggestion($suggestionId: ID!) {
+  acceptSuggestion(id: $suggestionId) {
+    id
+    title
+    startTime
+    endTime
+    area {
+      id
+      name
+      color
+    }
+  }
+}

@@ -1,0 +1,43 @@
+query GetMe {
+  me {
+    id
+    email
+    name
+    onboardingCompleted
+    lifePhilosophy {
+      areas {
+        id
+        name
+        color
+        icon
+        targetPercentage
+      }
+      idealBalance
+    }
+    preferences {
+      workingHours {
+        start
+        end
+        timezone
+      }
+      notifications {
+        reminders
+      }
+      aiAssistance {
+        proactivityLevel
+        autoScheduling
+        autoClassification
+      }
+      defaultEventDuration
+      bufferTime
+    }
+  }
+}
+
+mutation UpdateProfile($input: UpdateProfileInput!) {
+  updateProfile(input: $input) {
+    id
+    name
+    email
+  }
+}

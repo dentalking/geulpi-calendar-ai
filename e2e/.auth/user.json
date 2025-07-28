@@ -1,0 +1,29 @@
+{
+  "cookies": [
+    {
+      "name": "auth_token",
+      "value": "test_jwt_token_for_e2e",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1735689600,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "http://localhost:3000",
+      "localStorage": [
+        {
+          "name": "user",
+          "value": "{\"id\":\"test-user-1\",\"email\":\"test@example.com\",\"name\":\"Test User\"}"
+        },
+        {
+          "name": "accessToken",
+          "value": "test_access_token"
+        }
+      ]
+    }
+  ]
+}

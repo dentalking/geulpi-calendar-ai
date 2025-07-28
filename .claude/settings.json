@@ -1,0 +1,4 @@
+{
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": ["playwright", "filesystem", "memory", "context7"]
+}

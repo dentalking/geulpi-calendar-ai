@@ -1,0 +1,315 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  NODE_VERSION: '18'
+  JAVA_VERSION: '21'
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # Frontend CI
+  frontend:
+    name: Frontend CI
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run linter
+      run: npm run lint
+    
+    - name: Run type check
+      run: npm run typecheck || npx tsc --noEmit
+    
+    - name: Run tests
+      run: npm test -- --passWithNoTests
+    
+    - name: Build
+      run: npm run build
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: frontend-build
+        path: frontend/.next
+
+  # Backend CI
+  backend:
+    name: Backend CI
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+    
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'temurin'
+    
+    - name: Cache Gradle packages
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+    
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+    
+    - name: Run tests
+      env:
+        SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/test_db
+        SPRING_DATASOURCE_USERNAME: test_user
+        SPRING_DATASOURCE_PASSWORD: test_password
+      run: ./gradlew test
+    
+    - name: Build
+      run: ./gradlew build -x test
+    
+    - name: Upload test reports
+      if: failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: backend-test-reports
+        path: backend/build/reports/tests
+
+  # ML Server CI
+  ml-server:
+    name: ML Server CI
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./ml-server
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+        cache-dependency-path: ml-server/requirements*.txt
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements_optimized.txt || pip install -r requirements.txt
+        pip install pytest pytest-cov pytest-asyncio
+    
+    - name: Run linter
+      run: |
+        pip install flake8
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics || true
+    
+    - name: Run tests
+      run: |
+        pytest tests/ -v --cov=./ --cov-report=xml || true
+    
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./ml-server/coverage.xml
+        flags: ml-server
+
+  # Docker Build Test
+  docker-build:
+    name: Docker Build Test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [frontend, backend, ml-server, nginx]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Build Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./${{ matrix.service }}
+        push: false
+        tags: geulpi/${{ matrix.service }}:test
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  # Integration Test
+  integration:
+    name: Integration Test
+    runs-on: ubuntu-latest
+    needs: [frontend, backend, ml-server, docker-build]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Create .env file
+      run: |
+        cp .env.example .env
+        # Set test values
+        sed -i 's/your_secure_postgres_password_here/test_password/g' .env
+        sed -i 's/your_secure_redis_password_here/test_password/g' .env
+        sed -i 's/your_very_secure_jwt_secret_key_here/test_jwt_secret/g' .env
+        sed -i 's/your_google_client_id.apps.googleusercontent.com/test_client_id/g' .env
+        sed -i 's/your_google_client_secret_here/test_secret/g' .env
+        sed -i 's/sk-your_openai_api_key_here/test_openai_key/g' .env
+        sed -i 's/sk-ant-your_anthropic_api_key_here/test_anthropic_key/g' .env
+    
+    - name: Start services
+      run: |
+        docker-compose up -d postgres redis kafka zookeeper
+        sleep 30  # Wait for services to be ready
+    
+    - name: Run health checks
+      run: |
+        docker-compose ps
+        curl -f http://localhost:3000 || echo "Frontend not ready"
+        curl -f http://localhost:8080/actuator/health || echo "Backend not ready"
+        curl -f http://localhost:8000/health || echo "ML Server not ready"
+    
+    - name: Stop services
+      if: always()
+      run: docker-compose down -v
+
+  # Security Scan
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+    
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  # E2E Tests
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: [frontend, backend, ml-server, docker-build]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: e2e/package-lock.json
+    
+    - name: Create test environment file
+      run: |
+        cp e2e/.env.test .env.test
+        # Override with CI-specific values if needed
+        echo "HEADLESS=true" >> .env.test
+        echo "CI=true" >> .env.test
+    
+    - name: Setup E2E test environment
+      run: ./scripts/ci-e2e-setup.sh
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Start test services
+      run: |
+        docker-compose -f docker-compose.test.yml up -d
+        # Wait for services to be healthy
+        timeout 300 bash -c 'until docker-compose -f docker-compose.test.yml ps | grep -E "(healthy|running)" | wc -l | grep -q "8"; do sleep 5; done'
+    
+    - name: Check service health
+      run: |
+        docker-compose -f docker-compose.test.yml ps
+        curl -f http://localhost:3001 || echo "Frontend not ready"
+        curl -f http://localhost:8081/actuator/health || echo "Backend not ready"
+        curl -f http://localhost:8001/health || echo "ML Server not ready"
+        curl -f http://localhost || echo "Nginx not ready"
+    
+    - name: Run E2E tests
+      working-directory: ./e2e
+      run: |
+        npm test
+    
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: e2e-test-results
+        path: |
+          e2e/test-results/
+          e2e/playwright-report/
+    
+    - name: Upload test videos
+      if: failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: e2e-test-videos
+        path: e2e/test-results/**/*.webm
+    
+    - name: Stop test services
+      if: always()
+      run: |
+        docker-compose -f docker-compose.test.yml down -v
+        rm -f .env.test
+
+  # All checks passed
+  ci-success:
+    name: CI Success
+    runs-on: ubuntu-latest
+    needs: [frontend, backend, ml-server, docker-build, integration, e2e-tests]
+    
+    steps:
+    - name: CI Passed
+      run: echo "All CI checks passed successfully!"

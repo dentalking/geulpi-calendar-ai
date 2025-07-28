@@ -1,0 +1,201 @@
+config:
+  target: 'http://localhost:3000'
+  phases:
+    - duration: 60
+      arrivalRate: 15
+      name: "Frontend warm-up"
+    - duration: 120
+      arrivalRate: 40
+      name: "Normal load"
+    - duration: 180
+      arrivalRate: 75
+      name: "High load"
+    - duration: 60
+      arrivalRate: 120
+      name: "Stress test"
+  defaults:
+    headers:
+      'User-Agent': 'Artillery Performance Test'
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+      'Accept-Language': 'en-US,en;q=0.5'
+      'Accept-Encoding': 'gzip, deflate'
+      'Connection': 'keep-alive'
+  processor: './frontend-processor.js'
+
+scenarios:
+  - name: "Static Assets Performance"
+    weight: 30
+    flow:
+      # Main page load
+      - get:
+          url: "/"
+          expect:
+            - statusCode: 200
+          capture:
+            - regex: 'content="([^"]*)"'
+              group: 1
+              as: "csrfToken"
+      
+      # CSS assets
+      - get:
+          url: "/_next/static/css/app/layout.css"
+          expect:
+            - statusCode: 200
+      
+      # JavaScript chunks
+      - get:
+          url: "/_next/static/chunks/webpack.js"
+          expect:
+            - statusCode: [200, 304]
+      
+      - get:
+          url: "/_next/static/chunks/main.js"
+          expect:
+            - statusCode: [200, 304]
+      
+      # Service worker
+      - get:
+          url: "/sw.js"
+          expect:
+            - statusCode: 200
+
+  - name: "Application Flow Performance"
+    weight: 50
+    flow:
+      # Landing page
+      - get:
+          url: "/"
+          expect:
+            - statusCode: 200
+      
+      # Login page
+      - get:
+          url: "/login"
+          expect:
+            - statusCode: 200
+      
+      # Dashboard (requires auth simulation)
+      - get:
+          url: "/dashboard"
+          expect:
+            - statusCode: [200, 302, 401]
+      
+      # Calendar view
+      - get:
+          url: "/calendar"
+          expect:
+            - statusCode: [200, 302, 401]
+      
+      # Onboarding flow
+      - get:
+          url: "/onboarding"
+          expect:
+            - statusCode: 200
+
+  - name: "API Routes Performance"
+    weight: 20
+    flow:
+      # Health check
+      - get:
+          url: "/api/health"
+          expect:
+            - statusCode: 200
+      
+      # Auth callback simulation
+      - get:
+          url: "/auth/callback?code=test_code&state=test_state"
+          expect:
+            - statusCode: [200, 302, 400]
+
+  - name: "Resource Loading Performance"
+    weight: 15
+    flow:
+      # Manifest file
+      - get:
+          url: "/manifest.json"
+          expect:
+            - statusCode: 200
+      
+      # Favicon and icons
+      - get:
+          url: "/favicon.ico"
+          expect:
+            - statusCode: [200, 404]
+      
+      # Font loading simulation
+      - get:
+          url: "/_next/static/media/fonts/inter.woff2"
+          expect:
+            - statusCode: [200, 404]
+
+  - name: "Progressive Web App Features"
+    weight: 10
+    flow:
+      # Service worker registration
+      - get:
+          url: "/sw.js"
+          expect:
+            - statusCode: 200
+      
+      # Offline page
+      - get:
+          url: "/offline"
+          expect:
+            - statusCode: 200
+      
+      # Manifest for PWA
+      - get:
+          url: "/manifest.json"
+          expect:
+            - statusCode: 200
+          capture:
+            - json: "$.name"
+              as: "appName"
+
+  - name: "Mobile Performance Simulation"
+    weight: 25
+    flow:
+      # Simulate mobile user agent
+      - get:
+          url: "/"
+          headers:
+            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_7_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Mobile/15E148 Safari/604.1'
+          expect:
+            - statusCode: 200
+      
+      - get:
+          url: "/calendar"
+          headers:
+            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_7_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Mobile/15E148 Safari/604.1'
+          expect:
+            - statusCode: [200, 302]
+
+  - name: "Concurrent User Simulation"
+    weight: 20
+    flow:
+      # Simulate real user behavior with think time
+      - get:
+          url: "/"
+          expect:
+            - statusCode: 200
+      
+      - think: 2  # 2 second think time
+      
+      - get:
+          url: "/login"
+          expect:
+            - statusCode: 200
+      
+      - think: 3
+      
+      - get:
+          url: "/dashboard"
+          expect:
+            - statusCode: [200, 302]
+      
+      - think: 5
+      
+      - get:
+          url: "/calendar"
+          expect:
+            - statusCode: [200, 302]

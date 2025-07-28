@@ -1,0 +1,228 @@
+config:
+  target: 'http://localhost:8000'
+  phases:
+    - duration: 60
+      arrivalRate: 5
+      name: "ML Server warm-up"
+    - duration: 120
+      arrivalRate: 15
+      name: "Normal ML load"
+    - duration: 180
+      arrivalRate: 25
+      name: "High ML load"
+    - duration: 60
+      arrivalRate: 40
+      name: "Peak ML stress test"
+  defaults:
+    headers:
+      'Content-Type': 'application/json'
+      'Accept': 'application/json'
+      'User-Agent': 'Artillery ML Performance Test'
+  processor: './ml-processor.js'
+  timeout: 30  # 30 second timeout for ML operations
+
+scenarios:
+  - name: "Health Check and Status"
+    weight: 10
+    flow:
+      - get:
+          url: "/health"
+          expect:
+            - statusCode: 200
+          capture:
+            - json: "$.status"
+              as: "healthStatus"
+      
+      - get:
+          url: "/metrics"
+          expect:
+            - statusCode: 200
+
+  - name: "Schedule Optimization Performance"
+    weight: 40
+    flow:
+      - function: "generateOptimizationRequest"
+      
+      - post:
+          url: "/optimize-schedule"
+          json:
+            user_id: "{{ userId }}"
+            events: "{{ events }}"
+            preferences: "{{ preferences }}"
+            constraints: "{{ constraints }}"
+          expect:
+            - statusCode: 200
+          capture:
+            - json: "$.optimization_score"
+              as: "optimizationScore"
+            - json: "$.processing_time_ms"
+              as: "processingTime"
+
+  - name: "Pattern Detection Performance"
+    weight: 30
+    flow:
+      - function: "generatePatternRequest"
+      
+      - post:
+          url: "/detect-patterns"
+          json:
+            user_id: "{{ userId }}"
+            events: "{{ events }}"
+            timeframe_days: "{{ timeframeDays }}"
+            pattern_types: "{{ patternTypes }}"
+          expect:
+            - statusCode: 200
+          capture:
+            - json: "$.patterns"
+              as: "detectedPatterns"
+            - json: "$.confidence_scores"
+              as: "confidenceScores"
+
+  - name: "Event Classification Performance"
+    weight: 25
+    flow:
+      - function: "generateClassificationRequest"
+      
+      - post:
+          url: "/classify-event"
+          json:
+            event_data: "{{ eventData }}"
+            context: "{{ context }}"
+            user_history: "{{ userHistory }}"
+          expect:
+            - statusCode: 200
+          capture:
+            - json: "$.classification"
+              as: "eventClassification"
+            - json: "$.confidence"
+              as: "classificationConfidence"
+
+  - name: "Burnout Prediction Performance"
+    weight: 20
+    flow:
+      - function: "generateBurnoutRequest"
+      
+      - post:
+          url: "/predict-burnout"
+          json:
+            user_id: "{{ userId }}"
+            schedule_data: "{{ scheduleData }}"
+            health_metrics: "{{ healthMetrics }}"
+            work_patterns: "{{ workPatterns }}"
+          expect:
+            - statusCode: 200
+          capture:
+            - json: "$.burnout_risk"
+              as: "burnoutRisk"
+            - json: "$.risk_factors"
+              as: "riskFactors"
+
+  - name: "Batch Processing Performance"
+    weight: 15
+    flow:
+      - function: "generateBatchRequest"
+      
+      - post:
+          url: "/batch-optimize"
+          json:
+            requests: "{{ batchRequests }}"
+            batch_size: "{{ batchSize }}"
+            priority: "normal"
+          expect:
+            - statusCode: 200
+          capture:
+            - json: "$.results"
+              as: "batchResults"
+            - json: "$.total_processing_time"
+              as: "batchProcessingTime"
+
+  - name: "Model Performance Metrics"
+    weight: 10
+    flow:
+      - get:
+          url: "/model-stats"
+          expect:
+            - statusCode: 200
+          capture:
+            - json: "$.model_versions"
+              as: "modelVersions"
+            - json: "$.inference_times"
+              as: "inferenceTimes"
+      
+      - get:
+          url: "/model-health"
+          expect:
+            - statusCode: 200
+
+  - name: "Cache Performance Test"
+    weight: 15
+    flow:
+      - function: "generateCacheTestRequest"
+      
+      # First request (cache miss)
+      - post:
+          url: "/optimize-schedule"
+          json:
+            user_id: "{{ cacheUserId }}"
+            events: "{{ cacheEvents }}"
+            preferences: "{{ cachePreferences }}"
+            constraints: "{{ cacheConstraints }}"
+          expect:
+            - statusCode: 200
+          capture:
+            - json: "$.processing_time_ms"
+              as: "firstRequestTime"
+      
+      # Second identical request (cache hit)
+      - post:
+          url: "/optimize-schedule"
+          json:
+            user_id: "{{ cacheUserId }}"
+            events: "{{ cacheEvents }}"
+            preferences: "{{ cachePreferences }}"
+            constraints: "{{ cacheConstraints }}"
+          expect:
+            - statusCode: 200
+          capture:
+            - json: "$.processing_time_ms"
+              as: "secondRequestTime"
+
+  - name: "Concurrent Model Inference"
+    weight: 20
+    flow:
+      - function: "generateConcurrentRequests"
+      
+      # Simulate multiple concurrent requests
+      - post:
+          url: "/classify-event"
+          json:
+            event_data: "{{ eventData1 }}"
+            context: "{{ context1 }}"
+      
+      - post:
+          url: "/detect-patterns"
+          json:
+            user_id: "{{ userId1 }}"
+            events: "{{ events1 }}"
+            timeframe_days: 30
+      
+      - post:
+          url: "/predict-burnout"
+          json:
+            user_id: "{{ userId2 }}"
+            schedule_data: "{{ scheduleData2 }}"
+
+  - name: "Memory and Resource Monitoring"
+    weight: 5
+    flow:
+      - get:
+          url: "/system-stats"
+          expect:
+            - statusCode: 200
+          capture:
+            - json: "$.memory_usage"
+              as: "memoryUsage"
+            - json: "$.cpu_usage"
+              as: "cpuUsage"
+            - json: "$.gpu_usage"
+              as: "gpuUsage"

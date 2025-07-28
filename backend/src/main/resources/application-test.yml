@@ -1,0 +1,56 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+    
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        format_sql: true
+    show-sql: false
+    
+  liquibase:
+    enabled: false
+    
+  kafka:
+    bootstrap-servers: ${spring.embedded.kafka.brokers}
+    
+  data:
+    redis:
+      host: localhost
+      port: 6370 # Different port for test
+      
+  cache:
+    type: simple # Use simple cache for tests
+    
+jwt:
+  secret: test-secret-key-for-unit-tests-only
+  expiration: 3600000
+  
+google:
+  client:
+    id: test-google-client-id
+    secret: test-google-client-secret
+  api:
+    key: test-google-api-key
+    
+openai:
+  api:
+    key: test-openai-api-key
+    
+app:
+  cors:
+    allowed-origins: http://localhost:3000
+  oauth2:
+    redirectUri: http://localhost:3000/auth/callback
+    
+logging:
+  level:
+    com.geulpi.calendar: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.springframework.test: DEBUG

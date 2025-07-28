@@ -1,0 +1,62 @@
+query GetOnboardingSuggestions {
+  suggestions {
+    id
+    type
+    title
+    description
+    reasoning
+    impact {
+      balanceImprovement
+      conflictResolution
+      productivityGain
+    }
+    proposedEvent {
+      id
+      title
+      description
+      startTime
+      endTime
+      area {
+        id
+        name
+        color
+      }
+    }
+    priority
+  }
+}
+
+mutation CompleteOnboarding($input: OnboardingInput!) {
+  completeOnboarding(input: $input) {
+    id
+    onboardingCompleted
+    lifePhilosophy {
+      areas {
+        id
+        name
+        color
+        icon
+        targetPercentage
+      }
+      idealBalance
+    }
+  }
+}
+
+mutation AcceptSuggestion($id: ID!) {
+  acceptSuggestion(id: $id) {
+    id
+    title
+    startTime
+    endTime
+    area {
+      id
+      name
+      color
+    }
+  }
+}
+
+mutation RejectSuggestion($id: ID!, $reason: String) {
+  rejectSuggestion(id: $id, reason: $reason)
+}

@@ -1,0 +1,770 @@
+const http = require('http');
+const url = require('url');
+
+// Mock database
+const mockUsers = [
+  {
+    id: '1',
+    email: 'user@example.com',
+    name: 'Test User',
+    token: 'mock-jwt-token-123',
+    onboardingCompleted: true
+  }
+];
+
+const mockEvents = [
+  {
+    id: '1',
+    title: 'Team Meeting',
+    description: 'Weekly team sync',
+    startTime: new Date().toISOString(),
+    endTime: new Date(Date.now() + 3600000).toISOString(),
+    area: 'WORK',
+    aiConfidence: 0.95,
+    source: 'USER'
+  },
+  {
+    id: '2', 
+    title: 'Gym Workout',
+    description: 'Morning workout session',
+    startTime: new Date(Date.now() + 86400000).toISOString(),
+    endTime: new Date(Date.now() + 90000000).toISOString(),
+    area: 'HEALTH',
+    aiConfidence: 0.88,
+    source: 'AI_SUGGESTED'
+  }
+];
+
+// Helper functions
+function parseBody(req) {
+  return new Promise((resolve) => {
+    let body = '';
+    req.on('data', chunk => body += chunk.toString());
+    req.on('end', () => {
+      try {
+        resolve(JSON.parse(body));
+      } catch {
+        resolve({});
+      }
+    });
+  });
+}
+
+// Natural Language Processing Helper
+function processNaturalLanguage(input) {
+  const text = input.toLowerCase().trim();
+  
+  // Intent classification patterns (order matters - more specific patterns first)
+  const patterns = {
+    DELETE_EVENT: [
+      // Korean patterns for cancellation/deletion
+      /(?:취소|삭제|없애|지워).*?(?:회의|미팅|약속|일정)/,
+      /(?:회의|미팅|약속|일정).*?(?:취소|삭제|없애|지워)/,
+      // English patterns for cancellation/deletion  
+      /(?:cancel|delete|remove).*?(?:meeting|appointment|event)/,
+      /(?:meeting|appointment|event).*?(?:cancel|delete|remove)/
+    ],
+    UPDATE_EVENT: [
+      // Korean patterns for modification/rescheduling
+      /(?:변경|수정|옮기|이동).*?(?:회의|미팅|약속|일정)/,
+      /(?:회의|미팅|약속|일정).*?(?:변경|수정|옮기|이동)/,
+      /(?:시간|날짜).*?(?:변경|수정)/,
+      // English patterns for modification/rescheduling
+      /(?:reschedule|move|change|update).*?(?:meeting|appointment|event)/,
+      /(?:meeting|appointment|event).*?(?:reschedule|move|change|update)/
+    ],
+    QUERY_SCHEDULE: [
+      // Korean patterns for querying schedule
+      /(?:일정|스케줄).*?(?:보여|알려|확인|조회|어떻게)/,
+      /(?:내일|오늘|이번주|다음주).*?(?:일정|스케줄)(?!.*(?:잡아|만들어|추가|생성))/,
+      /(?:뭐|무엇|어떤).*?(?:일정|스케줄|회의|미팅)/,
+      // English patterns for querying schedule
+      /(?:show|tell|check).*?(?:schedule|calendar|appointments)/,
+      /what.*?(?:schedule|meetings|appointments)/,
+      /(?:do|have).*?(?:meeting|appointment).*?(?:today|tomorrow)/
+    ],
+    CREATE_EVENT: [
+      // Korean patterns for creating events
+      /(?:회의|미팅|만남|약속|일정).*?(?:잡아|만들어|추가|생성)/,
+      /(?:내일|오늘|이번주|다음주|월요일|화요일|수요일|목요일|금요일|토요일|일요일).*?(?:회의|미팅|약속)(?!.*(?:취소|삭제|변경|수정))/,
+      /(?:오후|오전|저녁|아침).*?(?:회의|미팅|약속)(?!.*(?:취소|삭제|변경|수정))/,
+      /(?:\d+시|\d+:\d+).*?(?:회의|미팅|약속)(?!.*(?:취소|삭제|변경|수정))/,
+      // English patterns for creating events
+      /(?:schedule|create|add|set up).*?(?:meeting|appointment|event)/,
+      /(?:meeting|appointment).*?(?:tomorrow|today|next week|monday|tuesday|wednesday|thursday|friday|saturday|sunday)(?!.*(?:cancel|delete|reschedule|change))/,
+      /(?:pm|am|afternoon|morning|evening).*?(?:meeting|appointment)(?!.*(?:cancel|delete|reschedule|change))/,
+      /(?:need|want).*?(?:schedule|meeting|appointment)/
+    ]
+  };
+  
+  // Time extraction patterns
+  const timePatterns = {
+    korean: {
+      relative: {
+        '오늘': 0,
+        '내일': 1,
+        '모레': 2,
+        '이번주': 0,
+        '다음주': 7
+      },
+      days: {
+        '월요일': 'monday',
+        '화요일': 'tuesday',
+        '수요일': 'wednesday',
+        '목요일': 'thursday',
+        '금요일': 'friday',
+        '토요일': 'saturday',
+        '일요일': 'sunday'
+      },
+      times: {
+        '오전': 'morning',
+        '오후': 'afternoon',
+        '저녁': 'evening',
+        '아침': 'morning'
+      }
+    },
+    english: {
+      relative: {
+        'today': 0,
+        'tomorrow': 1,
+        'next week': 7
+      },
+      days: {
+        'monday': 'monday',
+        'tuesday': 'tuesday',
+        'wednesday': 'wednesday',
+        'thursday': 'thursday',
+        'friday': 'friday',
+        'saturday': 'saturday',
+        'sunday': 'sunday'
+      },
+      times: {
+        'morning': 'morning',
+        'afternoon': 'afternoon',
+        'evening': 'evening',
+        'pm': 'afternoon',
+        'am': 'morning'
+      }
+    }
+  };
+  
+  // Detect intent
+  let detectedIntent = 'UNKNOWN';
+  for (const [intent, patternList] of Object.entries(patterns)) {
+    if (patternList.some(pattern => pattern.test(text))) {
+      detectedIntent = intent;
+      break;
+    }
+  }
+  
+  // Extract time information
+  let timeInfo = {
+    date: null,
+    time: null,
+    timeOfDay: null
+  };
+  
+  // Check for specific times (e.g., "3시", "15:30", "3pm")
+  const timeMatch = text.match(/(\d+)(?:시|:|pm|am)(\d+)?/);
+  if (timeMatch) {
+    const hour = parseInt(timeMatch[1]);
+    const minute = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
+    timeInfo.time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+  }
+  
+  // Check for relative dates
+  for (const [korean, days] of Object.entries(timePatterns.korean.relative)) {
+    if (text.includes(korean)) {
+      const targetDate = new Date();
+      targetDate.setDate(targetDate.getDate() + days);
+      timeInfo.date = targetDate.toISOString().split('T')[0];
+      break;
+    }
+  }
+  
+  for (const [english, days] of Object.entries(timePatterns.english.relative)) {
+    if (text.includes(english)) {
+      const targetDate = new Date();
+      targetDate.setDate(targetDate.getDate() + days);
+      timeInfo.date = targetDate.toISOString().split('T')[0];
+      break;
+    }
+  }
+  
+  // Check for time of day
+  for (const [korean, english] of Object.entries(timePatterns.korean.times)) {
+    if (text.includes(korean)) {
+      timeInfo.timeOfDay = english;
+      break;
+    }
+  }
+  
+  for (const [english, timeOfDay] of Object.entries(timePatterns.english.times)) {
+    if (text.includes(english)) {
+      timeInfo.timeOfDay = timeOfDay;
+      break;
+    }
+  }
+  
+  // Generate default time if not specified
+  if (!timeInfo.time && timeInfo.timeOfDay) {
+    switch (timeInfo.timeOfDay) {
+      case 'morning':
+        timeInfo.time = '09:00';
+        break;
+      case 'afternoon':
+        timeInfo.time = '14:00';
+        break;
+      case 'evening':
+        timeInfo.time = '18:00';
+        break;
+    }
+  }
+  
+  // Default to tomorrow 2pm if no time specified
+  if (!timeInfo.date) {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    timeInfo.date = tomorrow.toISOString().split('T')[0];
+  }
+  
+  if (!timeInfo.time) {
+    timeInfo.time = '14:00';
+  }
+  
+  return {
+    intent: detectedIntent,
+    understood: detectedIntent !== 'UNKNOWN',
+    timeInfo,
+    originalText: input
+  };
+}
+
+function sendResponse(res, statusCode, data) {
+  res.writeHead(statusCode, {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+  });
+  res.end(JSON.stringify(data));
+}
+
+const server = http.createServer(async (req, res) => {
+  const parsedUrl = url.parse(req.url, true);
+  const path = parsedUrl.pathname;
+  const method = req.method;
+
+  // Handle CORS preflight
+  if (method === 'OPTIONS') {
+    sendResponse(res, 200, {});
+    return;
+  }
+
+  try {
+    // Health check
+    if (path === '/health') {
+      sendResponse(res, 200, {
+        status: 'healthy',
+        service: 'backend',
+        timestamp: new Date().toISOString()
+      });
+      return;
+    }
+
+    // Reset user for onboarding test
+    if (path === '/test/reset-onboarding' && method === 'POST') {
+      mockUsers[0] = {
+        id: '1',
+        email: 'user@example.com',
+        name: 'Test User',
+        token: 'mock-jwt-token-123',
+        onboardingCompleted: false  // Reset for testing
+      };
+      
+      sendResponse(res, 200, {
+        success: true,
+        message: 'User reset for onboarding test'
+      });
+      return;
+    }
+
+    // Root endpoint
+    if (path === '/') {
+      sendResponse(res, 200, {
+        message: 'Geulpi Backend Service',
+        version: '1.0.0',
+        endpoints: [
+          'POST /auth/login',
+          'GET /events',
+          'POST /events',
+          'POST /events/classify',
+          'POST /onboarding/complete',
+          'POST /sync/google-calendar',
+          'POST /nlp/process',
+          'POST /graphql',
+          'GET /health'
+        ]
+      });
+      return;
+    }
+
+    // Authentication
+    if (path === '/auth/login' && method === 'POST') {
+      const body = await parseBody(req);
+      const { email, password } = body;
+      
+      if (email === 'user@example.com' && password === 'password') {
+        const user = mockUsers[0];
+        sendResponse(res, 200, {
+          success: true,
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            onboardingCompleted: user.onboardingCompleted
+          },
+          token: user.token
+        });
+      } else {
+        sendResponse(res, 401, {
+          success: false,
+          error: 'Invalid credentials'
+        });
+      }
+      return;
+    }
+
+    // Get events
+    if (path === '/events' && method === 'GET') {
+      const { filter, limit } = parsedUrl.query;
+      let events = [...mockEvents];
+      
+      if (limit) {
+        events = events.slice(0, parseInt(limit));
+      }
+      
+      sendResponse(res, 200, {
+        events,
+        total: mockEvents.length
+      });
+      return;
+    }
+
+    // Create event
+    if (path === '/events' && method === 'POST') {
+      const body = await parseBody(req);
+      const newEvent = {
+        id: String(mockEvents.length + 1),
+        ...body,
+        source: 'USER',
+        aiConfidence: 0.0,
+        createdAt: new Date().toISOString()
+      };
+      
+      mockEvents.push(newEvent);
+      
+      sendResponse(res, 201, {
+        success: true,
+        event: newEvent
+      });
+      return;
+    }
+
+    // Classify event (integrates with ML server)
+    if (path === '/events/classify' && method === 'POST') {
+      const body = await parseBody(req);
+      
+      try {
+        // Call ML server for classification
+        const mlResponse = await fetch('http://ml-server:8000/classify-event', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(body)
+        });
+        
+        if (mlResponse.ok) {
+          const classification = await mlResponse.json();
+          sendResponse(res, 200, {
+            success: true,
+            classification
+          });
+        } else {
+          // Fallback mock classification
+          sendResponse(res, 200, {
+            success: true,
+            classification: {
+              eventType: 'WORK',
+              priority: 'MEDIUM',
+              confidence: 0.75,
+              suggestedTags: ['meeting', 'work']
+            }
+          });
+        }
+      } catch (error) {
+        // Fallback mock classification
+        sendResponse(res, 200, {
+          success: true,
+          classification: {
+            eventType: 'WORK',
+            priority: 'MEDIUM', 
+            confidence: 0.75,
+            suggestedTags: ['meeting', 'work']
+          },
+          note: 'Used fallback classification due to ML server unavailability'
+        });
+      }
+      return;
+    }
+
+    // Complete onboarding
+    if (path === '/onboarding/complete' && method === 'POST') {
+      const body = await parseBody(req);
+      const { googleTokens, lifePhilosophy, preferences } = body;
+      
+      // Validate required fields
+      if (!googleTokens || !lifePhilosophy || !preferences) {
+        sendResponse(res, 400, {
+          success: false,
+          error: 'Missing required onboarding data'
+        });
+        return;
+      }
+      
+      // Simulate onboarding completion
+      const updatedUser = {
+        ...mockUsers[0],
+        onboardingCompleted: true,
+        lifePhilosophy,
+        preferences,
+        updatedAt: new Date().toISOString()
+      };
+      
+      // Update mock user
+      mockUsers[0] = updatedUser;
+      
+      sendResponse(res, 200, {
+        success: true,
+        user: updatedUser,
+        message: 'Onboarding completed successfully'
+      });
+      return;
+    }
+
+    // Google Calendar sync simulation
+    if (path === '/sync/google-calendar' && method === 'POST') {
+      const body = await parseBody(req);
+      const { accessToken } = body;
+      
+      if (!accessToken) {
+        sendResponse(res, 400, {
+          success: false,
+          error: 'Access token required'
+        });
+        return;
+      }
+      
+      // Simulate importing calendar events
+      const importedEvents = [
+        {
+          id: String(mockEvents.length + 1),
+          title: 'Weekly Team Standup',
+          description: 'Imported from Google Calendar',
+          startTime: new Date(Date.now() + 86400000).toISOString(),
+          endTime: new Date(Date.now() + 90000000).toISOString(),
+          area: 'WORK',
+          source: 'GOOGLE_CALENDAR',
+          aiConfidence: 0.9
+        },
+        {
+          id: String(mockEvents.length + 2),
+          title: 'Doctor Appointment',
+          description: 'Imported from Google Calendar',
+          startTime: new Date(Date.now() + 172800000).toISOString(),
+          endTime: new Date(Date.now() + 176400000).toISOString(),
+          area: 'HEALTH',
+          source: 'GOOGLE_CALENDAR',
+          aiConfidence: 0.85
+        }
+      ];
+      
+      // Add to mock events
+      mockEvents.push(...importedEvents);
+      
+      sendResponse(res, 200, {
+        success: true,
+        eventsImported: importedEvents.length,
+        eventsUpdated: 0,
+        events: importedEvents,
+        lastSyncAt: new Date().toISOString()
+      });
+      return;
+    }
+
+    // Natural language processing
+    if (path === '/nlp/process' && method === 'POST') {
+      const body = await parseBody(req);
+      const { input } = body;
+      
+      if (!input) {
+        sendResponse(res, 400, {
+          success: false,
+          error: 'Natural language input required'
+        });
+        return;
+      }
+      
+      try {
+        const nlpResult = processNaturalLanguage(input);
+        const { intent, understood, timeInfo, originalText } = nlpResult;
+        
+        let events = [];
+        let suggestions = [];
+        let message = '';
+        let clarificationNeeded = false;
+        let clarificationPrompts = [];
+        
+        if (intent === 'CREATE_EVENT') {
+          // Extract event title from input
+          let title = 'New Meeting';
+          if (originalText.includes('회의') || originalText.includes('meeting')) {
+            title = originalText.includes('팀') || originalText.includes('team') ? 'Team Meeting' : 'Meeting';
+          }
+          
+          // Create event with extracted time info
+          const startDateTime = new Date(`${timeInfo.date}T${timeInfo.time}:00`);
+          const endDateTime = new Date(startDateTime.getTime() + 3600000); // 1 hour duration
+          
+          const newEvent = {
+            id: String(mockEvents.length + 1),
+            title: title,
+            description: `Created from: "${originalText}"`,
+            startTime: startDateTime.toISOString(),
+            endTime: endDateTime.toISOString(),
+            area: 'WORK',
+            source: 'AI_SUGGESTED',
+            aiConfidence: 0.85
+          };
+          
+          events.push(newEvent);
+          mockEvents.push(newEvent);
+          
+          message = `✅ ${timeInfo.date} ${timeInfo.time}에 "${title}" 일정을 생성했습니다.`;
+          
+        } else if (intent === 'QUERY_SCHEDULE') {
+          // Return existing events for the requested date
+          const targetDate = timeInfo.date;
+          const dayEvents = mockEvents.filter(event => 
+            event.startTime.startsWith(targetDate)
+          );
+          
+          events = dayEvents;
+          message = dayEvents.length > 0 
+            ? `📅 ${targetDate}에 ${dayEvents.length}개의 일정이 있습니다.`
+            : `📅 ${targetDate}에 일정이 없습니다.`;
+            
+        } else if (intent === 'UPDATE_EVENT' || intent === 'DELETE_EVENT') {
+          clarificationNeeded = true;
+          clarificationPrompts = [
+            '어떤 일정을 수정/삭제하시겠습니까?',
+            '구체적인 일정 제목을 알려주세요.'
+          ];
+          message = '구체적인 일정 정보가 필요합니다.';
+          
+        } else {
+          message = '죄송합니다. 요청을 이해하지 못했습니다. 다시 말씀해 주세요.';
+        }
+        
+        sendResponse(res, 200, {
+          success: true,
+          aiResponse: {
+            understood,
+            intent,
+            events,
+            suggestions,
+            message,
+            clarificationNeeded,
+            clarificationPrompts: clarificationPrompts || []
+          }
+        });
+        
+      } catch (error) {
+        console.error('NLP Processing error:', error);
+        sendResponse(res, 500, {
+          success: false,
+          error: 'Natural language processing failed',
+          message: error.message
+        });
+      }
+      return;
+    }
+
+    // GraphQL endpoint (basic)
+    if (path === '/graphql' && method === 'POST') {
+      const body = await parseBody(req);
+      const { query, variables } = body;
+      
+      // Handle natural language processing mutation
+      if (query && query.includes('processNaturalLanguage')) {
+        const { input } = variables || {};
+        if (!input) {
+          sendResponse(res, 400, {
+            data: null,
+            errors: [{ message: 'Natural language input required' }]
+          });
+          return;
+        }
+        
+        try {
+          const nlpResult = processNaturalLanguage(input);
+          const { intent, understood, timeInfo, originalText } = nlpResult;
+          
+          let events = [];
+          let suggestions = [];
+          let message = '';
+          let clarificationNeeded = false;
+          let clarificationPrompts = [];
+          
+          if (intent === 'CREATE_EVENT') {
+            let title = 'New Meeting';
+            if (originalText.includes('회의') || originalText.includes('meeting')) {
+              title = originalText.includes('팀') || originalText.includes('team') ? 'Team Meeting' : 'Meeting';
+            }
+            
+            const startDateTime = new Date(`${timeInfo.date}T${timeInfo.time}:00`);
+            const endDateTime = new Date(startDateTime.getTime() + 3600000);
+            
+            const newEvent = {
+              id: String(mockEvents.length + 1),
+              title: title,
+              description: `Created from: "${originalText}"`,
+              startTime: startDateTime.toISOString(),
+              endTime: endDateTime.toISOString(),
+              area: 'WORK',
+              source: 'AI_SUGGESTED',
+              aiConfidence: 0.85
+            };
+            
+            events.push(newEvent);
+            mockEvents.push(newEvent);
+            
+            message = `✅ ${timeInfo.date} ${timeInfo.time}에 "${title}" 일정을 생성했습니다.`;
+            
+          } else if (intent === 'QUERY_SCHEDULE') {
+            const targetDate = timeInfo.date;
+            const dayEvents = mockEvents.filter(event => 
+              event.startTime.startsWith(targetDate)
+            );
+            
+            events = dayEvents;
+            message = dayEvents.length > 0 
+              ? `📅 ${targetDate}에 ${dayEvents.length}개의 일정이 있습니다.`
+              : `📅 ${targetDate}에 일정이 없습니다.`;
+              
+          } else {
+            message = '죄송합니다. 요청을 이해하지 못했습니다.';
+          }
+          
+          sendResponse(res, 200, {
+            data: {
+              processNaturalLanguage: {
+                understood,
+                intent,
+                events,
+                suggestions,
+                message,
+                clarificationNeeded,
+                clarificationPrompts: clarificationPrompts || []
+              }
+            }
+          });
+          
+        } catch (error) {
+          sendResponse(res, 500, {
+            data: null,
+            errors: [{ message: `NLP processing failed: ${error.message}` }]
+          });
+        }
+        return;
+      }
+      
+      // Handle onboarding mutation
+      if (query && query.includes('completeOnboarding')) {
+        const { input } = variables || {};
+        if (!input) {
+          sendResponse(res, 400, {
+            data: null,
+            errors: [{ message: 'Onboarding input required' }]
+          });
+          return;
+        }
+        
+        const updatedUser = {
+          ...mockUsers[0],
+          onboardingCompleted: true,
+          lifePhilosophy: input.lifePhilosophy,
+          preferences: input.preferences,
+          updatedAt: new Date().toISOString()
+        };
+        
+        mockUsers[0] = updatedUser;
+        
+        sendResponse(res, 200, {
+          data: {
+            completeOnboarding: updatedUser
+          }
+        });
+        return;
+      }
+      
+      // Simple query parsing for demo
+      if (query && query.includes('me')) {
+        sendResponse(res, 200, {
+          data: {
+            me: mockUsers[0]
+          }
+        });
+      } else if (query && query.includes('events')) {
+        sendResponse(res, 200, {
+          data: {
+            events: mockEvents
+          }
+        });
+      } else {
+        sendResponse(res, 200, {
+          data: null,
+          errors: [{ message: 'Query not implemented' }]
+        });
+      }
+      return;
+    }
+
+    // 404 Not Found
+    sendResponse(res, 404, {
+      error: 'Not found',
+      path: path,
+      method: method
+    });
+
+  } catch (error) {
+    console.error('Server error:', error);
+    sendResponse(res, 500, {
+      error: 'Internal server error',
+      message: error.message
+    });
+  }
+});
+
+const port = process.env.PORT || 8080;
+server.listen(port, '0.0.0.0', () => {
+  console.log(`Backend server running on port ${port}`);
+  console.log(`Available endpoints:`);
+  console.log(`  POST /auth/login`);
+  console.log(`  GET  /events`);
+  console.log(`  POST /events`);
+  console.log(`  POST /events/classify`);
+  console.log(`  POST /graphql`);
+  console.log(`  GET  /health`);
+});

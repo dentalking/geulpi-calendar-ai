@@ -1,0 +1,11 @@
+query GetEvents($startDate: Date!, $endDate: Date!) {
+    events(filter: {
+        startDate: $startDate
+        endDate: $endDate
+    }) {
+        id
+        title
+        startTime
+        endTime
+    }
+}

@@ -1,0 +1,140 @@
+package com.geulpi.calendar.config;
+
+import com.geulpi.calendar.domain.entity.Event;
+import com.geulpi.calendar.domain.entity.LifeArea;
+import com.geulpi.calendar.domain.entity.Location;
+import com.geulpi.calendar.domain.entity.User;
+import com.geulpi.calendar.repository.EventRepository;
+import com.geulpi.calendar.repository.LifeAreaRepository;
+import com.geulpi.calendar.service.UserService;
+import org.dataloader.BatchLoader;
+import org.dataloader.DataLoader;
+import org.dataloader.DataLoaderFactory;
+import org.dataloader.DataLoaderOptions;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Scope;
+
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
+
+@Configuration
+public class DataLoaderConfig {
+
+    @Autowired
+    private UserService userService;
+    
+    @Autowired
+    private EventRepository eventRepository;
+    
+    @Autowired
+    private LifeAreaRepository lifeAreaRepository;
+
+    /**
+     * DataLoader for batching user lookups to prevent N+1 queries
+     */
+    @Bean
+    @Scope("prototype")
+    public DataLoader<String, User> userDataLoader() {
+        BatchLoader<String, User> batchLoader = userIds -> {
+            List<User> users = userService.findByIds(userIds);
+            Map<String, User> userMap = users.stream()
+                    .collect(Collectors.toMap(User::getId, user -> user));
+            
+            return CompletableFuture.completedFuture(
+                userIds.stream()
+                    .map(userMap::get)
+                    .collect(Collectors.toList())
+            );
+        };
+        
+        return DataLoaderFactory.newDataLoader(batchLoader, 
+            DataLoaderOptions.newOptions()
+                .setCachingEnabled(true)
+                .setBatchingEnabled(true)
+                .setMaxBatchSize(100)
+        );
+    }
+
+    /**
+     * DataLoader for batching event lookups by user ID
+     */
+    @Bean
+    @Scope("prototype") 
+    public DataLoader<String, List<Event>> userEventsDataLoader() {
+        BatchLoader<String, List<Event>> batchLoader = userIds -> {
+            // Batch fetch all events for multiple users at once
+            List<Event> allEvents = eventRepository.findByUserIdIn(userIds);
+            
+            // Group events by user ID
+            Map<String, List<Event>> eventsByUserId = allEvents.stream()
+                    .collect(Collectors.groupingBy(event -> event.getUser().getId()));
+            
+            return CompletableFuture.completedFuture(
+                userIds.stream()
+                    .map(userId -> eventsByUserId.getOrDefault(userId, List.of()))
+                    .collect(Collectors.toList())
+            );
+        };
+        
+        return DataLoaderFactory.newDataLoader(batchLoader,
+            DataLoaderOptions.newOptions()
+                .setCachingEnabled(true)
+                .setBatchingEnabled(true)
+                .setMaxBatchSize(50)
+        );
+    }
+
+    /**
+     * DataLoader for batching life area lookups
+     */
+    @Bean
+    @Scope("prototype")
+    public DataLoader<String, LifeArea> lifeAreaDataLoader() {
+        BatchLoader<String, LifeArea> batchLoader = lifeAreaIds -> {
+            List<LifeArea> lifeAreas = lifeAreaRepository.findAllById(lifeAreaIds);
+            Map<String, LifeArea> lifeAreaMap = lifeAreas.stream()
+                    .collect(Collectors.toMap(LifeArea::getId, area -> area));
+            
+            return CompletableFuture.completedFuture(
+                lifeAreaIds.stream()
+                    .map(lifeAreaMap::get)
+                    .collect(Collectors.toList())
+            );
+        };
+        
+        return DataLoaderFactory.newDataLoader(batchLoader,
+            DataLoaderOptions.newOptions()
+                .setCachingEnabled(true)
+                .setBatchingEnabled(true)
+                .setMaxBatchSize(100)
+        );
+    }
+
+    /**
+     * DataLoader for batching location lookups
+     */
+    @Bean
+    @Scope("prototype")
+    public DataLoader<String, Location> locationDataLoader() {
+        BatchLoader<String, Location> batchLoader = locationIds -> {
+            // This would need to be implemented in LocationRepository
+            // For now, returning empty implementation
+            return CompletableFuture.completedFuture(
+                locationIds.stream()
+                    .map(id -> (Location) null)
+                    .collect(Collectors.toList())
+            );
+        };
+        
+        return DataLoaderFactory.newDataLoader(batchLoader,
+            DataLoaderOptions.newOptions()
+                .setCachingEnabled(true)
+                .setBatchingEnabled(true)
+                .setMaxBatchSize(100)
+        );
+    }
+}

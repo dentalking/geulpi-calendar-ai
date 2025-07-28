@@ -1,0 +1,57 @@
+spring:
+  graphql:
+    graphiql:
+      enabled: true
+      
+  datasource:
+    url: jdbc:postgresql://localhost:5432/geulpi_db
+    username: geulpi_user
+    password: testpassword123
+    
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        generate_statistics: true
+        
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      
+  kafka:
+    bootstrap-servers: localhost:9092
+    
+  liquibase:
+    contexts: local
+    
+logging:
+  level:
+    com.geulpi.calendar: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql: TRACE
+    org.springframework.security: DEBUG
+    org.springframework.graphql: DEBUG
+    org.springframework.kafka: DEBUG
+    
+app:
+  cors:
+    allowed-origins: http://localhost:3000,http://localhost:3001
+  oauth2:
+    redirectUri: http://localhost:3000/auth/callback
+    
+jwt:
+  secret: local-development-secret-key-change-in-production
+  
+# Local development external API keys (use test/sandbox keys)
+google:
+  client:
+    id: ${GOOGLE_CLIENT_ID:your-local-google-client-id}
+    secret: ${GOOGLE_CLIENT_SECRET:your-local-google-client-secret}
+  api:
+    key: ${GOOGLE_API_KEY:your-local-google-api-key}
+    
+openai:
+  api:
+    key: ${OPENAI_API_KEY:your-local-openai-api-key}

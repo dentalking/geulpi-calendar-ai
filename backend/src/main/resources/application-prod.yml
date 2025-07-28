@@ -1,0 +1,121 @@
+server:
+  port: 8080
+  compression:
+    enabled: true
+    min-response-size: 1024
+    
+spring:
+  graphql:
+    graphiql:
+      enabled: false
+      
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+    hikari:
+      maximum-pool-size: 30
+      minimum-idle: 10
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      connection-timeout: 30000
+    
+  jpa:
+    show-sql: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: false
+        generate_statistics: false
+        jdbc:
+          batch_size: 50
+        query:
+          plan_cache_max_size: 4096
+        cache:
+          use_second_level_cache: true
+          use_query_cache: true
+          region:
+            factory_class: org.hibernate.cache.jcache.JCacheRegionFactory
+        session:
+          events:
+            log:
+              LOG_QUERIES_SLOWER_THAN_MS: 200
+              
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD}
+      ssl: true
+      lettuce:
+        pool:
+          max-active: 100
+          max-idle: 50
+          min-idle: 10
+          
+  kafka:
+    bootstrap-servers: ${KAFKA_BROKERS}
+    producer:
+      compression-type: snappy
+      acks: all
+      retries: 3
+    consumer:
+      enable-auto-commit: false
+      session-timeout-ms: 30000
+      
+  liquibase:
+    contexts: prod
+    
+  cache:
+    redis:
+      time-to-live: 60m
+      
+logging:
+  level:
+    com.geulpi.calendar: WARN
+    org.springframework: WARN
+    root: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    
+app:
+  cors:
+    allowed-origins: ${ALLOWED_ORIGINS}
+  oauth2:
+    redirectUri: ${OAUTH2_REDIRECT_URI}
+  security:
+    max-login-attempts: 3
+    lockout-duration: 30
+    
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: 3600000 # 1 hour
+  
+google:
+  client:
+    id: ${GOOGLE_CLIENT_ID}
+    secret: ${GOOGLE_CLIENT_SECRET}
+  api:
+    key: ${GOOGLE_API_KEY}
+    
+openai:
+  api:
+    key: ${OPENAI_API_KEY}
+    
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+      environment: production

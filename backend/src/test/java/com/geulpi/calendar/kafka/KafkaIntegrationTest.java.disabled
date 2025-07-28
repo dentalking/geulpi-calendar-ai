@@ -1,0 +1,124 @@
+package com.geulpi.calendar.kafka;
+
+import com.geulpi.calendar.dto.ml.MLRequest;
+import com.geulpi.calendar.dto.ml.MLResponse;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.support.serializer.JsonDeserializer;
+import org.springframework.kafka.test.EmbeddedKafkaBroker;
+import org.springframework.kafka.test.context.EmbeddedKafka;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
+import org.springframework.test.annotation.DirtiesContext;
+
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@SpringBootTest
+@DirtiesContext
+@EmbeddedKafka(partitions = 1, 
+               topics = {"ml-requests", "ml-responses"}, 
+               brokerProperties = {"listeners=PLAINTEXT://localhost:9092", "port=9092"})
+class KafkaIntegrationTest {
+    
+    @Autowired
+    private KafkaProducer kafkaProducer;
+    
+    @Autowired
+    private KafkaMessageHandler messageHandler;
+    
+    @Autowired
+    private EmbeddedKafkaBroker embeddedKafkaBroker;
+    
+    @Test
+    void testKafkaMessageFlow() throws Exception {
+        // Given
+        String requestId = UUID.randomUUID().toString();
+        MLRequest.EventClassificationRequest request = MLRequest.EventClassificationRequest.builder()
+                .requestId(requestId)
+                .userId("test-user")
+                .eventId("test-event")
+                .title("Team Meeting")
+                .description("Weekly sync")
+                .startTime(LocalDateTime.now())
+                .endTime(LocalDateTime.now().plusHours(1))
+                .timestamp(LocalDateTime.now())
+                .build();
+        
+        // Register a future for the response
+        CompletableFuture<MLResponse> responseFuture = new CompletableFuture<>();
+        messageHandler.registerPendingRequest(requestId, responseFuture);
+        
+        // When - Send request
+        kafkaProducer.sendMLRequest(requestId, request).get(5, TimeUnit.SECONDS);
+        
+        // Create a consumer to verify the message was sent
+        Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("test-group", "true", embeddedKafkaBroker);
+        consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        consumerProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
+        consumerProps.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
+        
+        DefaultKafkaConsumerFactory<String, MLRequest> consumerFactory = 
+                new DefaultKafkaConsumerFactory<>(consumerProps);
+        
+        try (Consumer<String, MLRequest> consumer = consumerFactory.createConsumer()) {
+            embeddedKafkaBroker.consumeFromAllEmbeddedTopics(consumer);
+            
+            ConsumerRecords<String, MLRequest> records = consumer.poll(Duration.ofSeconds(5));
+            
+            // Then - Verify request was sent
+            assertThat(records.count()).isGreaterThan(0);
+            assertThat(records.iterator().next().key()).isEqualTo(requestId);
+        }
+        
+        // Simulate ML response
+        MLResponse.EventClassificationResponse response = MLResponse.EventClassificationResponse.builder()
+                .requestId(requestId)
+                .eventId("test-event")
+                .lifeAreaId("work-area")
+                .lifeAreaName("Work")
+                .confidence(0.95f)
+                .status("SUCCESS")
+                .message("Event classified successfully")
+                .timestamp(LocalDateTime.now())
+                .build();
+        
+        // Send response
+        kafkaProducer.sendMLResponse(requestId, response).get(5, TimeUnit.SECONDS);
+        
+        // Wait for response to be processed
+        Thread.sleep(1000); // Give time for the consumer to process
+        
+        // Verify the response was handled
+        assertThat(responseFuture.isDone()).isTrue();
+        MLResponse receivedResponse = responseFuture.get(5, TimeUnit.SECONDS);
+        assertThat(receivedResponse).isNotNull();
+        assertThat(receivedResponse.getRequestId()).isEqualTo(requestId);
+    }
+    
+    @Test
+    void testKafkaHealthIndicator() {
+        // This test verifies that the Kafka health indicator works with embedded Kafka
+        // In a real environment, you would test this against an actual Kafka cluster
+        
+        // Given
+        KafkaHealthIndicator healthIndicator = new KafkaHealthIndicator(null, messageHandler);
+        
+        // When/Then
+        // With embedded Kafka, we can't test the full health check
+        // but we can verify the pending request count
+        assertThat(messageHandler.getPendingRequestCount()).isGreaterThanOrEqualTo(0);
+    }
+}

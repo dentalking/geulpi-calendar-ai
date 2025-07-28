@@ -1,0 +1,8 @@
+query UpcomingEvents($limit: Int) {
+    upcomingEvents(limit: $limit) {
+        id
+        title
+        startTime
+        endTime
+    }
+}

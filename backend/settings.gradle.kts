@@ -1,0 +1,1 @@
+rootProject.name = "geulpi-calendar-backend"

@@ -1,0 +1,273 @@
+config:
+  target: 'http://localhost:8080'
+  phases:
+    - duration: 60
+      arrivalRate: 10
+      name: "Warm-up phase"
+    - duration: 120
+      arrivalRate: 30
+      name: "Load test phase"
+    - duration: 180
+      arrivalRate: 50
+      name: "Stress test phase"
+    - duration: 60
+      arrivalRate: 100
+      name: "Peak load phase"
+  defaults:
+    headers:
+      'Content-Type': 'application/json'
+      'Authorization': 'Bearer {{ authToken }}'
+  processor: './test-processor.js'
+  variables:
+    authToken: 'test-jwt-token-for-performance-testing'
+
+scenarios:
+  - name: "GraphQL API Performance Test"
+    weight: 100
+    flow:
+      # Health check
+      - get:
+          url: "/health"
+          expect:
+            - statusCode: 200
+          capture:
+            - json: "$.status"
+              as: "healthStatus"
+      
+      # Get user profile
+      - post:
+          url: "/graphql"
+          json:
+            query: |
+              query GetUserProfile($userId: ID!) {
+                userProfile(userId: $userId) {
+                  id
+                  email
+                  name
+                  preferences {
+                    workingHours {
+                      startTime
+                      endTime
+                      daysOfWeek
+                    }
+                    aiPreferences {
+                      enableSmartSuggestions
+                      proactivityLevel
+                    }
+                  }
+                }
+              }
+            variables:
+              userId: "{{ $randomInt(1, 1000) }}"
+          expect:
+            - statusCode: 200
+          capture:
+            - json: "$.data.userProfile.id"
+              as: "userId"
+      
+      # Get events for user
+      - post:
+          url: "/graphql"
+          json:
+            query: |
+              query GetEvents($userId: ID!, $startDate: String!, $endDate: String!) {
+                events(userId: $userId, filter: { startDate: $startDate, endDate: $endDate }) {
+                  id
+                  title
+                  description
+                  startTime
+                  endTime
+                  priority
+                  location {
+                    name
+                    address
+                  }
+                }
+              }
+            variables:
+              userId: "{{ userId }}"
+              startDate: "2024-01-01T00:00:00Z"
+              endDate: "2024-01-31T23:59:59Z"
+          expect:
+            - statusCode: 200
+          capture:
+            - json: "$.data.events[0].id"
+              as: "eventId"
+      
+      # Create new event
+      - post:
+          url: "/graphql"
+          json:
+            query: |
+              mutation CreateEvent($input: CreateEventInput!) {
+                createEvent(input: $input) {
+                  id
+                  title
+                  startTime
+                  endTime
+                  priority
+                }
+              }
+            variables:
+              input:
+                title: "Performance Test Event {{ $randomInt(1, 10000) }}"
+                description: "Automated performance test event"
+                startTime: "2024-02-01T10:00:00Z"
+                endTime: "2024-02-01T11:00:00Z"
+                priority: "MEDIUM"
+                userId: "{{ userId }}"
+          expect:
+            - statusCode: 200
+      
+      # Get AI suggestions
+      - post:
+          url: "/graphql"
+          json:
+            query: |
+              query GetSuggestions($userId: ID!) {
+                suggestions(userId: $userId) {
+                  id
+                  type
+                  title
+                  description
+                  confidence
+                  status
+                }
+              }
+            variables:
+              userId: "{{ userId }}"
+          expect:
+            - statusCode: 200
+      
+      # Optimize schedule
+      - post:
+          url: "/graphql"
+          json:
+            query: |
+              mutation OptimizeSchedule($userId: ID!) {
+                optimizeSchedule(userId: $userId) {
+                  success
+                  message
+                  optimizationScore
+                  proposedChanges {
+                    eventId
+                    action
+                    reason
+                  }
+                }
+              }
+            variables:
+              userId: "{{ userId }}"
+          expect:
+            - statusCode: 200
+      
+      # Get analytics data
+      - post:
+          url: "/graphql"
+          json:
+            query: |
+              query GetAnalytics($userId: ID!, $period: AnalyticsPeriod!) {
+                analytics(userId: $userId, period: $period) {
+                  timeBalance {
+                    workPercentage
+                    personalPercentage
+                    healthPercentage
+                    learningPercentage
+                  }
+                  productivity {
+                    averageDailyEvents
+                    completionRate
+                    focusTimeHours
+                  }
+                }
+              }
+            variables:
+              userId: "{{ userId }}"
+              period: "MONTHLY"
+          expect:
+            - statusCode: 200
+
+  - name: "Database Performance Test"
+    weight: 20
+    flow:
+      # Test database-heavy operations
+      - post:
+          url: "/graphql"
+          json:
+            query: |
+              query SearchEvents($query: String!, $userId: ID!) {
+                searchEvents(query: $query, userId: $userId) {
+                  id
+                  title
+                  description
+                  startTime
+                  endTime
+                  relevanceScore
+                }
+              }
+            variables:
+              query: "meeting {{ $randomString() }}"
+              userId: "{{ $randomInt(1, 1000) }}"
+          expect:
+            - statusCode: 200
+      
+      # Bulk data retrieval
+      - post:
+          url: "/graphql"
+          json:
+            query: |
+              query GetUserInsights($userId: ID!) {
+                insights(userId: $userId) {
+                  id
+                  type
+                  title
+                  description
+                  confidence
+                  createdAt
+                  patterns {
+                    id
+                    name
+                    frequency
+                    confidence
+                  }
+                }
+              }
+            variables:
+              userId: "{{ $randomInt(1, 1000) }}"
+          expect:
+            - statusCode: 200
+
+  - name: "Cache Performance Test"
+    weight: 15
+    flow:
+      # Test cached responses
+      - post:
+          url: "/graphql"
+          json:
+            query: |
+              query GetPopularEvents {
+                popularEvents {
+                  id
+                  title
+                  category
+                  attendeeCount
+                }
+              }
+          expect:
+            - statusCode: 200
+      
+      # Repeat same query to test cache hit
+      - post:
+          url: "/graphql"
+          json:
+            query: |
+              query GetPopularEvents {
+                popularEvents {
+                  id
+                  title
+                  category
+                  attendeeCount
+                }
+              }
+          expect:
+            - statusCode: 200

@@ -1,0 +1,643 @@
+"""
+DateTime, Date, Time, JSON scalar types
+"""
+scalar DateTime
+scalar Date
+scalar Time
+scalar JSON
+
+"""
+Root query type
+"""
+type Query {
+    # User queries
+    me: User!
+    userProfile(id: ID!): User
+
+    # Event queries
+    events(filter: EventFilter): [Event!]!
+    event(id: ID!): Event
+    upcomingEvents(limit: Int = 5): [Event!]!
+
+    # Analytics queries
+    timeBalance(period: AnalyticsPeriod!): TimeBalance!
+    insights(limit: Int = 5): [Insight!]!
+    patterns: [Pattern!]!
+
+    # Suggestion queries
+    suggestions(context: SuggestionContext): [Suggestion!]!
+    scheduleOptimization(date: Date!): OptimizationResult!
+
+    # Search
+    searchEvents(query: String!): [Event!]!
+    
+    # Dashboard queries
+    getTodaySchedule(userId: ID!): TodaySchedule!
+    getLifeBalanceAnalytics(userId: ID!, period: TimePeriod!): LifeBalanceAnalytics!
+    getDailyInsights(userId: ID!): [AIInsight!]!
+}
+
+"""
+Root mutation type
+"""
+type Mutation {
+    # User mutations
+    updateProfile(input: UpdateProfileInput!): User!
+    updateLifePhilosophy(input: LifePhilosophyInput!): User!
+
+    # Event mutations
+    createEvent(input: CreateEventInput!): Event!
+    updateEvent(id: ID!, input: UpdateEventInput!): Event!
+    deleteEvent(id: ID!): Boolean!
+    batchCreateEvents(inputs: [CreateEventInput!]!): [Event!]!
+
+    # AI interactions
+    processNaturalLanguage(input: String!): AIResponse!
+    processOCR(imageBase64: String!): AIResponse!
+    processSpeech(audioBase64: String!): AIResponse!
+    processVoiceCommand(audioBase64: String!): VoiceCommandResult!
+
+    # Suggestion actions
+    acceptSuggestion(id: ID!): Event!
+    rejectSuggestion(id: ID!, reason: String): Boolean!
+    batchAcceptSuggestions(ids: [ID!]!): [Event!]!
+
+    # Onboarding
+    completeOnboarding(input: OnboardingInput!): User!
+
+    # Sync
+    syncGoogleCalendar: SyncResult!
+}
+
+"""
+Root subscription type
+"""
+type Subscription {
+    # Real-time updates
+    eventUpdated(userId: ID!): Event!
+    newSuggestion(userId: ID!): Suggestion!
+    insightGenerated(userId: ID!): Insight!
+}
+
+"""
+User type
+"""
+type User {
+    id: ID!
+    email: String!
+    name: String!
+
+    # Life philosophy
+    lifePhilosophy: LifePhilosophy!
+    onboardingCompleted: Boolean!
+
+    # Preferences
+    preferences: UserPreferences!
+
+    # Analytics
+    currentBalance: TimeBalance!
+    weeklyReport: WeeklyReport!
+
+    createdAt: DateTime!
+    updatedAt: DateTime!
+}
+
+"""
+Life philosophy configuration
+"""
+type LifePhilosophy {
+    areas: [LifeArea!]!
+    idealBalance: JSON! # {"work": 60, "family": 20, "growth": 15, "etc": 5}
+    absoluteRules: [TimeRule!]!
+}
+
+"""
+Life area definition
+"""
+type LifeArea {
+    id: ID!
+    name: String!
+    color: String!
+    icon: String!
+    targetPercentage: Float!
+    description: String
+}
+
+"""
+Time-based rules
+"""
+type TimeRule {
+    id: ID!
+    name: String!
+    schedule: String! # Cron expression
+    area: LifeArea!
+    duration: Int! # minutes
+    priority: Priority!
+}
+
+"""
+Event type
+"""
+type Event {
+    id: ID!
+    title: String!
+    description: String
+
+    # Time
+    startTime: DateTime!
+    endTime: DateTime!
+    allDay: Boolean!
+    recurrence: RecurrenceRule
+    timezone: String!
+
+    # Classification
+    area: LifeArea!
+    aiConfidence: Float!
+    source: EventSource!
+
+    # Location
+    location: Location
+
+    # Participants
+    attendees: [String!]
+
+    # Metadata
+    googleEventId: String
+    createdBy: CreatedBy!
+    balanceImpact: Float!
+    tags: [String!]
+    color: String
+
+    createdAt: DateTime!
+    updatedAt: DateTime!
+}
+
+"""
+Location information
+"""
+type Location {
+    name: String!
+    address: String
+    coordinates: Coordinates
+    placeId: String # Google Places ID
+}
+
+"""
+Geographic coordinates
+"""
+type Coordinates {
+    latitude: Float!
+    longitude: Float!
+}
+
+"""
+Time balance analytics
+"""
+type TimeBalance {
+    period: AnalyticsPeriod!
+    actual: JSON! # {"work": 75, "family": 15, ...}
+    ideal: JSON!
+    deviation: JSON!
+    score: Float! # 0-100
+}
+
+"""
+AI-generated insights
+"""
+type Insight {
+    id: ID!
+    type: InsightType!
+    title: String!
+    description: String!
+    severity: Severity!
+    actionable: Boolean!
+    suggestedActions: [Suggestion!]!
+    createdAt: DateTime!
+}
+
+"""
+User behavior patterns
+"""
+type Pattern {
+    id: ID!
+    name: String!
+    description: String!
+    frequency: Float!
+    timeSlots: [TimeSlot!]!
+    confidence: Float!
+}
+
+"""
+AI suggestions
+"""
+type Suggestion {
+    id: ID!
+    type: SuggestionType!
+    title: String!
+    description: String!
+
+    # Action details
+    proposedEvent: Event
+    proposedChanges: JSON
+    alternativeSlots: [TimeSlot!]
+
+    # Metadata
+    reasoning: String!
+    impact: ImpactAnalysis!
+    priority: Priority!
+    expiresAt: DateTime
+
+    status: SuggestionStatus!
+    createdAt: DateTime!
+}
+
+"""
+Impact analysis for suggestions
+"""
+type ImpactAnalysis {
+    balanceImprovement: Float!
+    conflictResolution: Boolean!
+    productivityGain: Float!
+    affectedEvents: [Event!]!
+}
+
+"""
+AI response type
+"""
+type AIResponse {
+    understood: Boolean!
+    intent: Intent!
+    events: [Event!]!
+    suggestions: [Suggestion!]!
+    message: String!
+    clarificationNeeded: Boolean
+    clarificationPrompts: [String!]
+}
+
+"""
+Optimization result
+"""
+type OptimizationResult {
+    optimized: Boolean!
+    changes: [ProposedChange!]!
+    balanceBefore: TimeBalance!
+    balanceAfter: TimeBalance!
+    summary: String!
+}
+
+"""
+Proposed changes
+"""
+type ProposedChange {
+    event: Event!
+    action: ChangeAction!
+    newTime: TimeSlot
+    reason: String!
+}
+
+# Input Types
+
+input EventFilter {
+    startDate: Date!
+    endDate: Date!
+    areas: [ID!]
+    searchTerm: String
+    includeRecurring: Boolean = true
+}
+
+input CreateEventInput {
+    title: String!
+    description: String
+    startTime: DateTime!
+    endTime: DateTime!
+    allDay: Boolean = false
+    areaId: ID
+    location: LocationInput
+    recurrence: RecurrenceInput
+    attendees: [String!]
+    timezone: String
+    tags: [String!]
+}
+
+input UpdateEventInput {
+    title: String
+    description: String
+    startTime: DateTime
+    endTime: DateTime
+    areaId: ID
+    location: LocationInput
+    attendees: [String!]
+    tags: [String!]
+}
+
+input LocationInput {
+    name: String!
+    address: String
+    placeId: String
+}
+
+input LifePhilosophyInput {
+    areas: [LifeAreaInput!]!
+    idealBalance: JSON!
+    rules: [TimeRuleInput!]!
+}
+
+input LifeAreaInput {
+    name: String!
+    color: String!
+    icon: String!
+    targetPercentage: Float!
+}
+
+input TimeRuleInput {
+    name: String!
+    schedule: String!
+    areaId: ID!
+    duration: Int!
+    priority: Priority!
+}
+
+input OnboardingInput {
+    googleTokens: GoogleTokensInput!
+    lifePhilosophy: LifePhilosophyInput!
+    preferences: PreferencesInput!
+}
+
+input GoogleTokensInput {
+    accessToken: String!
+    refreshToken: String!
+    idToken: String!
+}
+
+input PreferencesInput {
+    workingHours: WorkingHoursInput!
+    notifications: NotificationPreferencesInput!
+    aiAssistance: AIPreferencesInput!
+    defaultEventDuration: Int
+    bufferTime: Int
+}
+
+input WorkingHoursInput {
+    start: Time!
+    end: Time!
+    timezone: String!
+    workDays: [DayOfWeek!]!
+}
+
+input NotificationPreferencesInput {
+    suggestions: Boolean!
+    insights: Boolean!
+    reminders: Boolean!
+    reminderMinutesBefore: Int
+}
+
+input AIPreferencesInput {
+    proactivityLevel: ProactivityLevel!
+    autoScheduling: Boolean!
+    autoClassification: Boolean!
+}
+
+# Enums
+
+enum EventSource {
+    USER
+    AI_SUGGESTED
+    GOOGLE_CALENDAR
+    OCR
+    VOICE
+}
+
+enum CreatedBy {
+    USER
+    AI
+    IMPORT
+}
+
+enum AnalyticsPeriod {
+    DAY
+    WEEK
+    MONTH
+    QUARTER
+    YEAR
+}
+
+enum InsightType {
+    IMBALANCE
+    BURNOUT_RISK
+    OPTIMIZATION_OPPORTUNITY
+    PATTERN_DETECTED
+    GOAL_DEVIATION
+}
+
+enum SuggestionType {
+    SCHEDULE_OPTIMIZATION
+    NEW_EVENT
+    EVENT_MODIFICATION
+    EVENT_DELETION
+    BATCH_CHANGES
+}
+
+enum SuggestionStatus {
+    PENDING
+    ACCEPTED
+    REJECTED
+    EXPIRED
+}
+
+enum Priority {
+    LOW
+    MEDIUM
+    HIGH
+    CRITICAL
+}
+
+enum Severity {
+    INFO
+    WARNING
+    ERROR
+    CRITICAL
+}
+
+enum Intent {
+    CREATE_EVENT
+    UPDATE_EVENT
+    DELETE_EVENT
+    QUERY_SCHEDULE
+    ANALYZE_TIME
+    REQUEST_SUGGESTION
+    UNKNOWN
+}
+
+enum ChangeAction {
+    MOVE
+    DELETE
+    SHORTEN
+    EXTEND
+    MERGE
+}
+
+enum ProactivityLevel {
+    MINIMAL
+    BALANCED
+    PROACTIVE
+}
+
+# Additional types
+
+type SyncResult {
+    success: Boolean!
+    eventsImported: Int!
+    eventsUpdated: Int!
+    errors: [String!]
+    lastSyncAt: DateTime!
+}
+
+type TimeSlot {
+    start: DateTime!
+    end: DateTime!
+    available: Boolean!
+}
+
+type RecurrenceRule {
+    frequency: RecurrenceFrequency!
+    interval: Int!
+    daysOfWeek: [DayOfWeek!]
+    endDate: Date
+    exceptions: [Date!]
+}
+
+input RecurrenceInput {
+    frequency: RecurrenceFrequency!
+    interval: Int = 1
+    daysOfWeek: [DayOfWeek!]
+    endDate: Date
+}
+
+enum RecurrenceFrequency {
+    DAILY
+    WEEKLY
+    MONTHLY
+    YEARLY
+}
+
+enum DayOfWeek {
+    MONDAY
+    TUESDAY
+    WEDNESDAY
+    THURSDAY
+    FRIDAY
+    SATURDAY
+    SUNDAY
+}
+
+type UserPreferences {
+    workingHours: WorkingHours!
+    notifications: NotificationPreferences!
+    aiAssistance: AIPreferences!
+    defaultEventDuration: Int! # minutes
+    bufferTime: Int! # minutes between events
+}
+
+type WorkingHours {
+    start: Time!
+    end: Time!
+    timezone: String!
+    workDays: [DayOfWeek!]!
+}
+
+type NotificationPreferences {
+    suggestions: Boolean!
+    insights: Boolean!
+    reminders: Boolean!
+    reminderMinutesBefore: Int!
+}
+
+type AIPreferences {
+    proactivityLevel: ProactivityLevel!
+    autoScheduling: Boolean!
+    autoClassification: Boolean!
+}
+
+type WeeklyReport {
+    week: String!
+    balance: TimeBalance!
+    topInsights: [Insight!]!
+    achievements: [String!]!
+    recommendations: [String!]!
+    totalHours: Float!
+    focusScore: Float!
+}
+
+input UpdateProfileInput {
+    name: String
+    preferences: PreferencesInput
+}
+
+input SuggestionContext {
+    timeframe: AnalyticsPeriod
+    focusArea: ID
+    urgency: Priority
+}
+
+# Dashboard types
+type TodaySchedule {
+    date: DateTime!
+    events: [Event!]!
+    totalEvents: Int!
+    busyHours: Float!
+    freeTimeSlots: [TimeSlot!]!
+    dailyGoal: String
+}
+
+type LifeBalanceAnalytics {
+    areas: [AreaBalance!]!
+    recommendations: [String!]!
+    score: Float!
+}
+
+type AreaBalance {
+    area: LifeArea!
+    actualPercentage: Float!
+    targetPercentage: Float!
+    deviation: Float!
+    totalMinutes: Int!
+}
+
+type AIInsight {
+    id: ID!
+    type: InsightType!
+    message: String!
+    priority: Priority!
+    actionable: Boolean!
+}
+
+enum TimePeriod {
+    TODAY
+    THIS_WEEK
+    THIS_MONTH
+    LAST_7_DAYS
+    LAST_30_DAYS
+}
+
+type VoiceCommandResult {
+    transcription: String!
+    confidence: Float!
+    nlpResult: AIResponse!
+}
+
+type DashboardUpdate {
+    updateType: String!
+    event: Event
+    timeBalance: TimeBalance
+    insight: AIInsight
+    timestamp: DateTime!
+}
+
+type BalanceAlert {
+    id: ID!
+    title: String!
+    message: String!
+    severity: Severity!
+    affectedArea: AreaBalance
+    timestamp: DateTime!
+}

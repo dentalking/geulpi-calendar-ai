@@ -1,0 +1,25 @@
+{
+  "name": "geulpi-performance-tests",
+  "version": "1.0.0",
+  "description": "Performance testing suite for Geulpi Calendar Service",
+  "scripts": {
+    "test": "./run-performance-tests.sh",
+    "test:quick": "./quick-test.sh",
+    "test:backend": "artillery run artillery/backend-load-test.yml",
+    "test:frontend": "artillery run artillery/frontend-load-test.yml",
+    "test:ml": "artillery run artillery/ml-server-load-test.yml",
+    "test:redis": "cd redis && node redis-performance-test.js",
+    "test:db": "psql -h localhost -p 5432 -d geulpi_calendar -f database/db-performance-test.sql"
+  },
+  "dependencies": {
+    "ioredis": "^5.3.2"
+  },
+  "devDependencies": {
+    "artillery": "^2.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "author": "Geulpi Calendar Service Team",
+  "license": "MIT"
+}

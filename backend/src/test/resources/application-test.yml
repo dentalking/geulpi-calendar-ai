@@ -1,0 +1,96 @@
+spring:
+  profiles:
+    active: test
+  
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+    
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+        globally_quoted_identifiers: true
+    database-platform: org.hibernate.dialect.H2Dialect
+  
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  
+  liquibase:
+    enabled: false
+  
+  redis:
+    host: localhost
+    port: 6379
+    timeout: 2000ms
+    
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: test-group
+      auto-offset-reset: earliest
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      
+  cache:
+    type: simple
+    
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: test-client-id
+            client-secret: test-client-secret
+            scope: openid,email,profile
+        provider:
+          google:
+            authorization-uri: https://accounts.google.com/o/oauth2/auth
+            token-uri: https://oauth2.googleapis.com/token
+            user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
+            user-name-attribute: sub
+
+logging:
+  level:
+    com.geulpi.calendar: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.graphql: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    
+# Disable external service calls in tests
+external:
+  google:
+    calendar:
+      enabled: false
+    speech:
+      enabled: false
+    vision:
+      enabled: false
+  openai:
+    enabled: false
+    
+# Test-specific JWT settings
+jwt:
+  secret: test-secret-key-for-testing-purposes-only
+  expiration: 3600000
+  
+# Disable performance monitoring in tests
+performance:
+  monitoring:
+    enabled: false
+    
+# Test database connection pool settings
+hikari:
+  connection-timeout: 20000
+  maximum-pool-size: 5
+  minimum-idle: 1

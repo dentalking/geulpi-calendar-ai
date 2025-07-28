@@ -1,0 +1,324 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    
+    <changeSet id="2-1" author="geulpi">
+        <!-- Time Rules table -->
+        <createTable tableName="time_rules">
+            <column name="id" type="varchar(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="schedule" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="area_id" type="varchar(36)">
+                <constraints nullable="false" foreignKeyName="fk_time_rule_area" 
+                            references="life_areas(id)"/>
+            </column>
+            <column name="duration" type="integer">
+                <constraints nullable="false"/>
+            </column>
+            <column name="priority" type="varchar(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="life_philosophy_id" type="varchar(36)">
+                <constraints nullable="false" foreignKeyName="fk_time_rule_philosophy" 
+                            references="life_philosophies(id)" deleteCascade="true"/>
+            </column>
+        </createTable>
+        
+        <!-- Locations table -->
+        <createTable tableName="locations">
+            <column name="id" type="varchar(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="address" type="varchar(500)"/>
+            <column name="latitude" type="double"/>
+            <column name="longitude" type="double"/>
+            <column name="place_id" type="varchar(255)"/>
+        </createTable>
+        
+        <!-- Add location to events -->
+        <addColumn tableName="events">
+            <column name="location_id" type="varchar(36)">
+                <constraints foreignKeyName="fk_event_location" 
+                            references="locations(id)"/>
+            </column>
+        </addColumn>
+        
+        <!-- Recurrence Rules table -->
+        <createTable tableName="recurrence_rules">
+            <column name="id" type="varchar(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="frequency" type="varchar(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="interval" type="integer" defaultValueNumeric="1">
+                <constraints nullable="false"/>
+            </column>
+            <column name="days_of_week" type="varchar(255)"/>
+            <column name="end_date" type="date"/>
+            <column name="exceptions" type="text"/>
+            <column name="event_id" type="varchar(36)">
+                <constraints nullable="false" foreignKeyName="fk_recurrence_event" 
+                            references="events(id)" deleteCascade="true"/>
+            </column>
+        </createTable>
+        
+        <!-- Insights table -->
+        <createTable tableName="insights">
+            <column name="id" type="varchar(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="type" type="varchar(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="title" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="text">
+                <constraints nullable="false"/>
+            </column>
+            <column name="severity" type="varchar(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="actionable" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="user_id" type="varchar(36)">
+                <constraints nullable="false" foreignKeyName="fk_insight_user" 
+                            references="users(id)" deleteCascade="true"/>
+            </column>
+            <column name="created_at" type="timestamp">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        
+        <!-- Patterns table -->
+        <createTable tableName="patterns">
+            <column name="id" type="varchar(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="text">
+                <constraints nullable="false"/>
+            </column>
+            <column name="frequency" type="float">
+                <constraints nullable="false"/>
+            </column>
+            <column name="time_slots" type="jsonb"/>
+            <column name="confidence" type="float">
+                <constraints nullable="false"/>
+            </column>
+            <column name="user_id" type="varchar(36)">
+                <constraints nullable="false" foreignKeyName="fk_pattern_user" 
+                            references="users(id)" deleteCascade="true"/>
+            </column>
+        </createTable>
+        
+        <!-- Suggestions table -->
+        <createTable tableName="suggestions">
+            <column name="id" type="varchar(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="type" type="varchar(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="title" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="text">
+                <constraints nullable="false"/>
+            </column>
+            <column name="proposed_event_id" type="varchar(36)">
+                <constraints foreignKeyName="fk_suggestion_event" 
+                            references="events(id)"/>
+            </column>
+            <column name="proposed_changes" type="jsonb"/>
+            <column name="alternative_slots" type="jsonb"/>
+            <column name="reasoning" type="text">
+                <constraints nullable="false"/>
+            </column>
+            <column name="priority" type="varchar(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="expires_at" type="timestamp"/>
+            <column name="status" type="varchar(50)" defaultValue="PENDING">
+                <constraints nullable="false"/>
+            </column>
+            <column name="user_id" type="varchar(36)">
+                <constraints nullable="false" foreignKeyName="fk_suggestion_user" 
+                            references="users(id)" deleteCascade="true"/>
+            </column>
+            <column name="created_at" type="timestamp">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        
+        <!-- Impact Analysis table -->
+        <createTable tableName="impact_analyses">
+            <column name="id" type="varchar(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="balance_improvement" type="float">
+                <constraints nullable="false"/>
+            </column>
+            <column name="conflict_resolution" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="productivity_gain" type="float">
+                <constraints nullable="false"/>
+            </column>
+            <column name="suggestion_id" type="varchar(36)">
+                <constraints nullable="false" unique="true" foreignKeyName="fk_impact_suggestion" 
+                            references="suggestions(id)" deleteCascade="true"/>
+            </column>
+        </createTable>
+        
+        <!-- Impact Analysis Affected Events join table -->
+        <createTable tableName="impact_affected_events">
+            <column name="impact_analysis_id" type="varchar(36)">
+                <constraints nullable="false" foreignKeyName="fk_impact_affected_impact" 
+                            references="impact_analyses(id)" deleteCascade="true"/>
+            </column>
+            <column name="event_id" type="varchar(36)">
+                <constraints nullable="false" foreignKeyName="fk_impact_affected_event" 
+                            references="events(id)"/>
+            </column>
+        </createTable>
+        
+        <!-- Create indexes -->
+        <createIndex tableName="time_rules" indexName="idx_time_rules_philosophy">
+            <column name="life_philosophy_id"/>
+        </createIndex>
+        
+        <createIndex tableName="locations" indexName="idx_locations_place_id">
+            <column name="place_id"/>
+        </createIndex>
+        
+        <createIndex tableName="recurrence_rules" indexName="idx_recurrence_event">
+            <column name="event_id"/>
+        </createIndex>
+        
+        <createIndex tableName="insights" indexName="idx_insights_user_created">
+            <column name="user_id"/>
+            <column name="created_at" descending="true"/>
+        </createIndex>
+        
+        <createIndex tableName="patterns" indexName="idx_patterns_user">
+            <column name="user_id"/>
+        </createIndex>
+        
+        <createIndex tableName="suggestions" indexName="idx_suggestions_user_status">
+            <column name="user_id"/>
+            <column name="status"/>
+        </createIndex>
+        
+        <createIndex tableName="impact_affected_events" indexName="idx_impact_events_unique" unique="true">
+            <column name="impact_analysis_id"/>
+            <column name="event_id"/>
+        </createIndex>
+    </changeSet>
+    
+    <changeSet id="2-2" author="geulpi">
+        <!-- User Preferences table -->
+        <createTable tableName="user_preferences">
+            <column name="id" type="varchar(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="user_id" type="varchar(36)">
+                <constraints nullable="false" unique="true" foreignKeyName="fk_preferences_user" 
+                            references="users(id)" deleteCascade="true"/>
+            </column>
+            <column name="default_event_duration" type="integer" defaultValueNumeric="60">
+                <constraints nullable="false"/>
+            </column>
+            <column name="buffer_time" type="integer" defaultValueNumeric="15">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        
+        <!-- Working Hours table -->
+        <createTable tableName="working_hours">
+            <column name="id" type="varchar(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="start_time" type="time">
+                <constraints nullable="false"/>
+            </column>
+            <column name="end_time" type="time">
+                <constraints nullable="false"/>
+            </column>
+            <column name="timezone" type="varchar(50)" defaultValue="Asia/Seoul">
+                <constraints nullable="false"/>
+            </column>
+            <column name="work_days" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="preferences_id" type="varchar(36)">
+                <constraints nullable="false" unique="true" foreignKeyName="fk_working_hours_preferences" 
+                            references="user_preferences(id)" deleteCascade="true"/>
+            </column>
+        </createTable>
+        
+        <!-- Notification Preferences table -->
+        <createTable tableName="notification_preferences">
+            <column name="id" type="varchar(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="suggestions" type="boolean" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="insights" type="boolean" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reminders" type="boolean" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reminder_minutes_before" type="integer" defaultValueNumeric="15">
+                <constraints nullable="false"/>
+            </column>
+            <column name="preferences_id" type="varchar(36)">
+                <constraints nullable="false" unique="true" foreignKeyName="fk_notification_preferences" 
+                            references="user_preferences(id)" deleteCascade="true"/>
+            </column>
+        </createTable>
+        
+        <!-- AI Preferences table -->
+        <createTable tableName="ai_preferences">
+            <column name="id" type="varchar(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="proactivity_level" type="varchar(50)" defaultValue="BALANCED">
+                <constraints nullable="false"/>
+            </column>
+            <column name="auto_scheduling" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="auto_classification" type="boolean" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="preferences_id" type="varchar(36)">
+                <constraints nullable="false" unique="true" foreignKeyName="fk_ai_preferences" 
+                            references="user_preferences(id)" deleteCascade="true"/>
+            </column>
+        </createTable>
+        
+        <!-- Create indexes -->
+        <createIndex tableName="user_preferences" indexName="idx_preferences_user">
+            <column name="user_id"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>
