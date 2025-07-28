@@ -314,7 +314,7 @@ ${event.description ? `📝 ${event.description}` : ''}
               startTime: new Date(`${eventData.startDate}T${eventData.startTime}`).toISOString(),
               endTime: new Date(`${eventData.startDate}T${eventData.endTime}`).toISOString(),
               description: eventData.description,
-              location: eventData.location,
+              location: eventData.location ? { name: eventData.location } : undefined,
             },
           },
         })
@@ -328,7 +328,7 @@ ${event.description ? `📝 ${event.description}` : ''}
               startTime: new Date(`${eventData.startDate}T${eventData.startTime}`).toISOString(),
               endTime: new Date(`${eventData.startDate}T${eventData.endTime}`).toISOString(),
               description: eventData.description,
-              location: eventData.location,
+              location: eventData.location ? { name: eventData.location } : undefined,
               allDay: false,
             },
           },
