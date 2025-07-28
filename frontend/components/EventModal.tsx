@@ -272,7 +272,7 @@ export default function EventModal({
             <div className="bg-white rounded-lg p-6 max-w-sm mx-4">
               <h3 className="text-lg font-semibold mb-4">일정 삭제</h3>
               <p className="text-gray-600 mb-6">
-                "{title}" 일정을 삭제하시겠어요? 이 작업은 되돌릴 수 없습니다.
+                &ldquo;{title}&rdquo; 일정을 삭제하시겠어요? 이 작업은 되돌릴 수 없습니다.
               </p>
               <div className="flex gap-3">
                 <button
