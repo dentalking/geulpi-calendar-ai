@@ -488,8 +488,8 @@ ${event.description ? `📝 ${event.description}` : ''}
                     variables: {
                       id: event.id,
                       input: {
-                        startTime: start.toISOString(),
-                        endTime: end.toISOString(),
+                        startTime: (start instanceof Date ? start : new Date(start)).toISOString(),
+                        endTime: (end instanceof Date ? end : new Date(end)).toISOString(),
                       },
                     },
                   })
@@ -507,8 +507,8 @@ ${event.description ? `📝 ${event.description}` : ''}
                     variables: {
                       id: event.id,
                       input: {
-                        startTime: start.toISOString(),
-                        endTime: end.toISOString(),
+                        startTime: (start instanceof Date ? start : new Date(start)).toISOString(),
+                        endTime: (end instanceof Date ? end : new Date(end)).toISOString(),
                       },
                     },
                   })
